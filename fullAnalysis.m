@@ -7,16 +7,18 @@ testSequence = 'MREV8';
 % Potential Test Vars
 N = 4;
 global dim 
-dim = 2^Nin ;
+dim = 2^N ;
 cutoffTime = 1e-3;
+%deltas = [-10000 -7500 -5000 -2500 -1000 -500 -100 0 100 500 1000 2500 5000 7500 10000];
+%couplings = [1000 5000 10000 20000 40000 60000];
 
 % Setup 4-parameter grid
 meshing=20; %number of values of each param. to test over
 
-maxTau = 14; 
+maxTau = 14;
 maxPulse = 1.4; % low is 0.5; normal is 1.4
-maxDelta = 2000; % low is 300; mid is 2000; normal is 10000
-maxCoupling = 4000; % low is 8000; mid is 4000; normal is 60000
+maxDelta = 2000; % low is 300; normal is 10000
+maxCoupling = 4000; % low is 8000; normal is 60000
 
 taus=zeros(meshing,1); 
 pulses=zeros(meshing,1);
@@ -34,7 +36,7 @@ end
 
 %% Generate Coupling Matrices
 
-as = generateCouplingF(Nin);
+as = generateCouplingF(N);
 
 
 %% Result Storage Matrices
@@ -59,17 +61,17 @@ Z=sparse(dim,dim);
 X=sparse(dim,dim);
 Y=sparse(dim,dim);
 
-for k=1:Nin
-      Z = Z + mykron(speye(2^(k-1)),z,speye(2^(Nin-k)));
-      X = X + mykron(speye(2^(k-1)),x,speye(2^(Nin-k)));
-      Y = Y + mykron(speye(2^(k-1)),y,speye(2^(Nin-k)));
+for k=1:N
+      Z = Z + mykron(speye(2^(k-1)),z,speye(2^(N-k)));
+      X = X + mykron(speye(2^(k-1)),x,speye(2^(N-k)));
+      Y = Y + mykron(speye(2^(k-1)),y,speye(2^(N-k)));
 end
 
 global Pulses
 Pulses = {};
 
 raw_results = zeros(length(as), meshing, meshing, meshing, meshing);
-results = zeros(meshing, meshing, meshing, meshing);
+resultArray = zeros(meshing, meshing, meshing, meshing);
 
 %% Run Simulations
 
@@ -81,12 +83,11 @@ for j=1:length(as)
         coupling = couplings(couplingCount);
         
         for deltaCount=1:meshing
-            delta = deltas(deltaCount);
+            Delta = deltas(deltaCount);
             Hint = Hdip*coupling + Z*Delta; % system Hamiltonian
 
      % ---------- CALCULATE AVERAGE HAMILTONIAN (UP TO Hbar(2)) -----------
             if strcmp(testSequence, 'WHH')
-                testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau;
                 H0 = (Delta / 3) * (X + Y + Z); 
                 H2 = zeros(dim,dim);
                 Pulses = {-X, Y, -Y, X};
@@ -108,7 +109,6 @@ for j=1:length(as)
                 Havg = H0 + H2;
                 
             elseif strcmp(testSequence, 'MREV8')
-                testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uybar*Utau*Uxbar*Utau;
                 H0 = (Delta / 3) * (X + Z); % * (1 + 2*aM);
                 Pulses = {-X, -Y, Y, X, X, -Y, Y, -X};
                 Taus = [1 1 2 1 2 1 2 1 1];
@@ -122,7 +122,7 @@ for j=1:length(as)
                     end
                 end
 
-                H1 = (1/(2*1i*cycleTime))*H1;
+                H1 = (1/(2*1i*sum(Taus)))*H1;
 
                 %Calculate 2nd order Magnus term
                 H2 = zeros(dim,dim);
@@ -139,7 +139,7 @@ for j=1:length(as)
                     end
                 end
 
-                H2 = (-1/(6*cycleTime))*H2;                        
+                H2 = (-1/(6*sum(Taus)))*H2;                        
 
                 Havg = H0+H1+H2;           
             end
@@ -157,8 +157,6 @@ for j=1:length(as)
                 % Define Unitaries
                     
                 %experimental unitary operators
-                Utau=(expm(-1i*Hint*2*pi*tau));
-                UhalfTau = (expm(-1i*Hint*pi*tau));
                 Ux = (expm(-1i*2*pi*(Hint+f1*X)*pulse));
                 Uy = (expm(-1i*2*pi*(Hint+f1*Y)*pulse));
                 Uxbar = (expm(-1i*2*pi*(Hint-f1*X)*pulse));
@@ -172,12 +170,14 @@ for j=1:length(as)
                
                 for tauCount=1:meshing
                     tau=taus(tauCount);
+                    Utau=(expm(-1i*Hint*2*pi*tau));
+                    UhalfTau = (expm(-1i*Hint*pi*tau));
 
        % - - - - - - - - - - SIMULATE SPIN DYNAMICS - - - - - - - - - - - -
 
                     % (Choose desired sequence to test)
                     if strcmp(testSequence, 'WHH')
-                        
+                        testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Uy*Utau*Uxbar*Utau;
                         testCyc = 12;
                         cycleTime = 4 * pulse + 6 * tau;
                         U0 = expm(-1i*Havg*2*pi*cycleTime);
@@ -185,7 +185,7 @@ for j=1:length(as)
                         % END DELETE-TO-RESET CODE ------------------------
                         
                     elseif strcmp(testSequence, 'MREV8')
-                        
+                        testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uybar*Utau*Uxbar*Utau;
                         testCyc = 6;
                         cycleTime = 8 * pulse + 12 * tau;            
                         U0 = expm(-1i*Havg*2*pi*cycleTime);  
@@ -251,7 +251,7 @@ for j=1:length(as)
                         % Adjust time
                         simTime = simTime + cycleTime;
                     end
-                    raw_results(j, pulseCount, tauCount, deltaCount, couplingCount) = fidelity0(cycleCount);
+                    raw_results(j, pulseCount, tauCount, deltaCount, couplingCount) = fidelity0(cycleCount)
         % SPIN SIMULATION ENDS HERE - - - - - - - - - - - - - - - - - - 
                     
                     % COMPLIE RESULTS
@@ -259,12 +259,13 @@ for j=1:length(as)
             end
         end
     end
+    save(strcat(string(j),'_',testSequence,'.mat'),'raw_results')
 end
 
-results(pulseCount, tauCount, deltaCount, couplingCount) = mean(raw_results(:,pulseCount, tauCount, deltaCount, couplingCount));
+resultArray(pulseCount, tauCount, deltaCount, couplingCount) = mean(raw_results(:,pulseCount, tauCount, deltaCount, couplingCount));
 %% Save Result Matrix
 
-filename = strcat(testSequence,'_H0+H1+H2_meshing=',meshing,'_',date,'.mat');
+filename = strcat(testSequence,'_H0+H1+H2_meshing=',string(meshing),'_',date,'.mat');
 save(filename, 'resultArray') 
 
 
