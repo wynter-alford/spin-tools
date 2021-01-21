@@ -1,11 +1,11 @@
 %% Setup Code (original Spin Sim code)
 
-global dim pulse f1 Pulses
+global dim pulse f1 Pulses X Y Z
 
 sequenceName = 'WHH';  % select sequence to test over
 testVarName = 'Tau'; % only affects file name currently
 testValueCount = 60;
-testValueMax = 30e-6;
+testValueMax = 20e-6;
 
 couplingsCount = 8; % how many different coupling matrices to average over
 
@@ -49,27 +49,6 @@ for j=1:couplingsCount
 end
 
 
-%% SEQUENCES (new code)
-
-%WAHUHA
-if strcmp(sequenceName, 'WHH')
-    Pulses = {-X, Y, -Y, X};
-    Taus = [tau tau 2*tau tau tau];
-    
-%MREV-8
-elseif strcmp(sequenceName, 'MREV8')
-    Pulses = {-X, -Y, Y, X, X, -Y, Y, -X}; % Check this
-    Taus = [tau tau 2*tau tau 2*tau tau 2*tau tau tau];
-
-%CORY 48
-elseif strcmp(sequenceName, 'CORY48')
-    Pulses = {X, Y, -X, Y, X, Y, X, Y, X, -Y, X, Y, -Y, -X, Y, -X, -Y, -X, -Y, -X, -Y, X, -Y, -X, -X, Y, -X, -Y, -X, Y, X, -Y, -X, -Y, X, -Y, Y, -X, Y, X, Y, -X, -Y, X, Y, X, -Y, X};
-    Taus = [tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau tau];
-end
-    
-tCyc = sum(Taus);
-
-
 %% Iterate over different Delta values to see how term magnitude changes
 
 testVars = zeros(testValueCount,1);
@@ -88,8 +67,13 @@ raw_results_h4 = zeros(length(testVars),couplingsCount);
 
 
 for d=1:length(testVars)
-    Tau = d*(testValueMax/testValueCount); % ADJUST FOR TEST VAR 
-    testVars(d)=Tau; % ADJUST FOR TEST VAR
+    tau = d*(testValueMax/testValueCount); % ADJUST FOR TEST VAR 
+    testVars(d)=tau; % ADJUST FOR TEST VAR
+    
+    sequence = getSequence(sequenceName, tau);
+    Pulses = sequence.Pulses;
+    Taus = sequence.Taus;
+    tCyc = sum(Taus);
     
     for c=1:couplingsCount
         
@@ -242,13 +226,13 @@ end
 
 %% Save Result Output
 fileDescriptor = strcat(sequenceName,'_',testVarName,'_magnus_results_',date,'.mat');
-
-save(strcat('h0_',fileDescriptor),'results_h0');
-save(strcat('h1_',fileDescriptor),'results_h1');
-save(strcat('h2_',fileDescriptor),'results_h2');
-save(strcat('h3_',fileDescriptor),'results_h3');
-save(strcat('h4_',fileDescriptor),'results_h4');
-save(strcat(testVarName,'s_',fileDescriptor),'testVars');
+save(strcat(testVarName,fileDescriptor), 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars')
+% save(strcat('h0_',fileDescriptor),'results_h0');
+% save(strcat('h1_',fileDescriptor),'results_h1');
+% save(strcat('h2_',fileDescriptor),'results_h2');
+% save(strcat('h3_',fileDescriptor),'results_h3');
+% save(strcat('h4_',fileDescriptor),'results_h4');
+% save(strcat(testVarName,'s_',fileDescriptor),'testVars');
 
 %% FUNCTION DEFINITIONS
 function ct = comm(A,B) % calculates the commutator of a pair of matrices
@@ -256,7 +240,7 @@ function ct = comm(A,B) % calculates the commutator of a pair of matrices
 end
 
 function orh = matOrder(A) % calculates the magnitude of a matrix
-    orh = sqrt(trace(A*A));
+    orh = log10(sqrt(trace(A*A)));
 end
 
 % Find the frame transformation U_rf to eliminate the RF Hamiltonian
@@ -319,7 +303,23 @@ function Hdip = getHdip(N, dim, x, y, z, a)
 
 end
 
+% SEQUENCES (new code)
+function sequence = getSequence(sequenceName, tau)
+    global X Y
+    %WAHUHA
+    if strcmp(sequenceName, 'WHH')
+        sequence.Pulses = {-X, Y, -Y, X};
+        sequence.Taus = [tau tau 2*tau tau tau];
 
+    %MREV-8
+    elseif strcmp(sequenceName, 'MREV8')
+        sequence.Pulses = {-X, -Y, Y, X, X, -Y, Y, -X}; % Check this
+        sequence.Taus = [tau tau 2*tau tau 2*tau tau 2*tau tau tau];
 
-
+    %CORY 48
+    elseif strcmp(sequenceName, 'CORY48')
+        sequence.Pulses = {X, Y, -X, Y, X, Y, X, Y, X, -Y, X, Y, -Y, -X, Y, -X, -Y, -X, -Y, -X, -Y, X, -Y, -X, -X, Y, -X, -Y, -X, Y, X, -Y, -X, -Y, X, -Y, Y, -X, Y, X, Y, -X, -Y, X, Y, X, -Y, X};
+        sequence.Taus = [tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau tau];
+    end
+end
 
