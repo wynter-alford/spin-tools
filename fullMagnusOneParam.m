@@ -2,12 +2,12 @@
 
 global dim pulse f1 Pulses X Y Z
 
-sequenceName = 'WHH';  % select sequence to test over
+sequenceName = 'MREV8';  % select sequence to test over
 testVarName = 'Tau'; % only affects file name currently
-testValueCount = 60;
+testValueCount = 30;
 testValueMax = 20e-6;
 
-couplingsCount = 8; % how many different coupling matrices to average over
+couplingsCount = 6; % how many different coupling matrices to average over
 
 N = 4;
 dim = 2^N;
@@ -48,16 +48,15 @@ for j=1:couplingsCount
     Hdips{j} = getHdip(N, dim, x, y, z, dip);
 end
 
-
 %% Iterate over different Delta values to see how term magnitude changes
 
 testVars = zeros(testValueCount,1);
 
-results_h0 = zeros(length(testVars));
-results_h1 = zeros(length(testVars));
-results_h2 = zeros(length(testVars));
-results_h3 = zeros(length(testVars));
-results_h4 = zeros(length(testVars));
+results_h0 = zeros(length(testVars),1);
+results_h1 = zeros(length(testVars),1);
+results_h2 = zeros(length(testVars),1);
+results_h3 = zeros(length(testVars),1);
+results_h4 = zeros(length(testVars),1);
 
 raw_results_h0 = zeros(length(testVars),couplingsCount);
 raw_results_h1 = zeros(length(testVars),couplingsCount);
@@ -70,15 +69,20 @@ for d=1:length(testVars)
     tau = d*(testValueMax/testValueCount); % ADJUST FOR TEST VAR 
     testVars(d)=tau; % ADJUST FOR TEST VAR
     
-    sequence = getSequence(sequenceName, tau);
+    sequence = getSequence(sequenceName);
     Pulses = sequence.Pulses;
-    Taus = sequence.Taus;
+    Taus = tau * sequence.Taus;
     tCyc = sum(Taus);
     
     for c=1:couplingsCount
         
         Hdip = Hdips{c};
         Hsys = Hdip*coupling + Z*Delta;
+        
+        toggledHsys = {};
+        for p = 0:length(Pulses)
+            toggledHsys{p+1} = getURF(p)'*Hsys*getURF(p);
+        end
 
         %calcMagnus
         %Magnus Calculation is done here ------------------------------------
@@ -100,8 +104,8 @@ for d=1:length(testVars)
         H1 = zeros(dim,dim);
         for k=1:length(Pulses)
             for j=0:k-1
-                Hk = getURF(k)'*Hsys*getURF(k);
-                Hj = getURF(j)'*Hsys*getURF(j);
+                Hk = toggledHsys{k+1};
+                Hj = toggledHsys{j+1};
                 H1 = H1 + comm(Hk,Hj)*Taus(k+1)*Taus(j+1);
             end
         end
@@ -114,9 +118,9 @@ for d=1:length(testVars)
         for l=0:length(Pulses)
             for k=0:l
                 for j=0:k
-                    Hl = getURF(l)'*Hsys*getURF(l);
-                    Hk = getURF(k)'*Hsys*getURF(k);
-                    Hj = getURF(j)'*Hsys*getURF(j);
+                    Hl = toggledHsys{l+1};
+                    Hk = toggledHsys{k+1};
+                    Hj = toggledHsys{j+1};
 
                     Hterm = comm(Hl,comm(Hk,Hj))+comm(comm(Hl,Hk),Hj);
                     H2 = H2 + Hterm*Taus(l+1)*Taus(k+1)*Taus(j+1);
@@ -133,10 +137,10 @@ for d=1:length(testVars)
             for l=0:m
                 for k=0:l
                     for j=0:k
-                        Hm = getURF(m)'*Hsys*getURF(m);
-                        Hl = getURF(l)'*Hsys*getURF(l);
-                        Hk = getURF(k)'*Hsys*getURF(k);
-                        Hj = getURF(j)'*Hsys*getURF(j);
+                        Hm = toggledHsys{m+1};
+                        Hl = toggledHsys{l+1};
+                        Hk = toggledHsys{k+1};
+                        Hj = toggledHsys{j+1};
 
                         term1 = comm(comm(comm(Hm,Hl),Hk),Hj);
                         term2 = comm(Hm,comm(comm(Hl,Hk),Hj));
@@ -163,14 +167,14 @@ for d=1:length(testVars)
                     for k=0:l
                         for j=0:k
                             % Express Hsys(t) in the interaction frame
-                            Hmm = getURF(mm)'*Hsys*getURF(mm);
-                            Hm = getURF(m)'*Hsys*getURF(m);
-                            Hl = getURF(l)'*Hsys*getURF(l);
-                            Hk = getURF(k)'*Hsys*getURF(k);
-                            Hj = getURF(j)'*Hsys*getURF(j);
+                            Hmm = toggledHsys{mm+1};
+                            Hm = toggledHsys{m+1};
+                            Hl = toggledHsys{l+1};
+                            Hk = toggledHsys{k+1};
+                            Hj = toggledHsys{j+1};
 
                             % Calculate commutators
-                            term1 = (-1/30)*comm(Hmm,comm(Hmm,comm(Hl,comm(Hk,Hj))));
+                            term1 = (-1/30)*comm(Hmm,comm(Hm,comm(Hl,comm(Hk,Hj))));
                             term2 = (2/15)*comm(Hj,comm(Hmm,comm(Hm,comm(Hk,Hl))));
                             term3 = (1/15)*comm(comm(Hmm,Hj),comm(Hm,comm(Hk,Hl)));
                             term4 = (1/15)*comm(comm(Hm,Hj),comm(Hmm,comm(Hk,Hl)));
@@ -304,22 +308,22 @@ function Hdip = getHdip(N, dim, x, y, z, a)
 end
 
 % SEQUENCES (new code)
-function sequence = getSequence(sequenceName, tau)
+function sequence = getSequence(sequenceName)
     global X Y
     %WAHUHA
     if strcmp(sequenceName, 'WHH')
         sequence.Pulses = {-X, Y, -Y, X};
-        sequence.Taus = [tau tau 2*tau tau tau];
+        sequence.Taus = [1 1 2 1 1];
 
     %MREV-8
     elseif strcmp(sequenceName, 'MREV8')
         sequence.Pulses = {-X, -Y, Y, X, X, -Y, Y, -X}; % Check this
-        sequence.Taus = [tau tau 2*tau tau 2*tau tau 2*tau tau tau];
+        sequence.Taus = [1 1 2 1 2 1 2 1 1];
 
     %CORY 48
     elseif strcmp(sequenceName, 'CORY48')
         sequence.Pulses = {X, Y, -X, Y, X, Y, X, Y, X, -Y, X, Y, -Y, -X, Y, -X, -Y, -X, -Y, -X, -Y, X, -Y, -X, -X, Y, -X, -Y, -X, Y, X, -Y, -X, -Y, X, -Y, Y, -X, Y, X, Y, -X, -Y, X, Y, X, -Y, X};
-        sequence.Taus = [tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau 2*tau tau tau];
+        sequence.Taus = [1 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 1];
     end
 end
 
