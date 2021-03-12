@@ -1,19 +1,20 @@
 %% Indicate test sequence
-testSequence = 'MREV8';
+testSequence = 'WHH';
 % CURRENTLY USES TWO TERMS IN MAGNUS FOR WHH AND MREV8
 
 %% Initialize Test Variables
 
 % Potential Test Vars
 N = 4;
-global dim
+global dim Pulses
 dim = 2^N ;
+Pulses = {};
 cutoffTime = 1e-3;
 %deltas = [-10000 -7500 -5000 -2500 -1000 -500 -100 0 100 500 1000 2500 5000 7500 10000];
 %couplings = [1000 5000 10000 20000 40000 60000];
 
 % Setup 4-parameter grid
-meshing=20; %number of values of each param. to test over
+meshing=30; %number of values of each param. to test over
 
 maxTau = 14;
 maxPulse = 1.4; % low is 0.5; normal is 1.4
@@ -28,11 +29,10 @@ couplings=zeros(meshing,1);
 for i=1:meshing
     taus(i)=(maxTau/meshing)*i*10^(-6);
     pulses(i)=(maxPulse/meshing)*i*10^(-6);
-    %deltas(i)=(maxDelta/meshing)*i;
-    deltas(i)=(-1) * maxDelta + 2*(maxDelta/meshing)*i; % FIX TO AVOID NEGATIVE DELTA
+    deltas(i)=(maxDelta/meshing)*i;  % POSITIVE DELTA ONLY
+    %deltas(i)=(-1) * maxDelta + 2*(maxDelta/meshing)*i; % NEGATIVE DELTA
     couplings(i)=(maxCoupling/meshing)*i;
 end
-
 
 %% Generate Coupling Matrices
 
@@ -49,6 +49,7 @@ id=speye(2);p=sparse([0 1;0 0]);m=sparse([0 0; 1 0]);
 
 
 % collective spin observables
+global X Y 
 
 Z=sparse(dim,dim);
 X=sparse(dim,dim);
@@ -60,10 +61,16 @@ for k=1:N
       Y = Y + mykron(speye(2^(k-1)),y,speye(2^(N-k)));
 end
 
-global Pulses
-Pulses = {};
+%% Initialize Pulse Sequence
 
-raw_f_results0 = zeros(length(as), meshing, meshing, meshing, meshing);
+sequence = getSequence(testSequence);
+Pulses = sequence.Pulses;
+Taus = sequence.Taus;
+
+
+%% Setup Result Storage
+
+raw_f_results3 = zeros(length(as), meshing, meshing, meshing, meshing);
 raw_f_results1 = zeros(length(as), meshing, meshing, meshing, meshing);
 raw_h1s = zeros(length(as),meshing,meshing,meshing);
 raw_h2s = zeros(length(as),meshing,meshing,meshing);
@@ -80,26 +87,32 @@ for j=1:length(as)
         
         for deltaCount=1:meshing
             Delta = deltas(deltaCount);
-            Hint = Hdip*coupling + Z*Delta; % system Hamiltonian            
+            Hint = Hdip*coupling + Z*Delta; % system Hamiltonian
+            
+            % Compute all possible toggled Hamiltonians
+            toggledHsys = {};
+            for p = 0:length(Pulses)
+                toggledHsys{p+1} = getURF(p)'*Hint*getURF(p);
+            end
             
             for tauCount=1:meshing
-            tau=taus(tauCount);
-            Utau=(expm(-1i*Hint*2*pi*tau));
-            UhalfTau = (expm(-1i*Hint*pi*tau));
+                tau=taus(tauCount);               
+                Taus = tau * Taus;                
+                Utau=(expm(-1i*Hint*2*pi*tau));
+                UhalfTau = (expm(-1i*Hint*pi*tau));
 
 % ------------- CALCULATE AVERAGE HAMILTONIAN (UP TO Hbar(2)) -------------
 
                 if strcmp(testSequence, 'WHH')
                     H0 = (Delta / 3) * (X + Y + Z); 
                     H2 = zeros(dim,dim);
-                    Pulses = {-X, Y, -Y, X};
-                    Taus = [1 1 2 1 1];  
-                    for lll=0:length(Pulses)
+                    
+                    for lll=0:length(sequence.Pulses)
                         for qqq=0:lll
                             for jjj=0:qqq
-                                Hl = getURF(lll)'*Hint*getURF(lll);
-                                Hk = getURF(qqq)'*Hint*getURF(qqq);
-                                Hj = getURF(jjj)'*Hint*getURF(jjj);
+                                Hl = toggledHsys{lll+1};
+                                Hk = toggledHsys{qqq+1};
+                                Hj = toggledHsys{jjj+1};
 
                                 Hterm = comm(Hl,comm(Hk,Hj))+comm(comm(Hl,Hk),Hj);
                                 H2 = H2 + Hterm*Taus(lll+1)*Taus(qqq+1)*Taus(jjj+1);
@@ -114,14 +127,12 @@ for j=1:length(as)
 
                 elseif strcmp(testSequence, 'MREV8')
                     H0 = (Delta / 3) * (X + Z); % * (1 + 2*aM);
-                    Pulses = {-X, -Y, Y, X, X, -Y, Y, -X};
-                    Taus = (1e-6) * [1 1 2 1 2 1 2 1 1];
-
+                    
                     H1 = zeros(dim,dim);
-                    for lll=1:length(Pulses)
+                    for lll=1:length(sequence.Pulses)
                         for jjj=0:lll-1
-                            Hk = getURF(lll)'*Hint*getURF(lll);
-                            Hj = getURF(jjj)'*Hint*getURF(jjj);
+                            Hk = toggledHsys{lll+1};
+                            Hj = toggledHsys{jjj+1};
                             H1 = H1 + comm(Hk,Hj)*Taus(lll+1)*Taus(jjj+1);
                         end
                     end
@@ -135,9 +146,9 @@ for j=1:length(as)
                     for lll=0:length(Pulses)
                         for qqq=0:lll
                             for jjj=0:qqq
-                                Hl = getURF(lll)'*Hint*getURF(lll);
-                                Hk = getURF(qqq)'*Hint*getURF(qqq);
-                                Hj = getURF(jjj)'*Hint*getURF(jjj);
+                                Hl = toggledHsys{lll+1};
+                                Hk = toggledHsys{qqq+1};
+                                Hj = toggledHsys{jjj+1};
 
                                 Hterm = comm(Hl,comm(Hk,Hj))+comm(comm(Hl,Hk),Hj);
                                 H2 = H2 + Hterm*Taus(lll+1)*Taus(qqq+1)*Taus(jjj+1);
@@ -184,14 +195,14 @@ for j=1:length(as)
                         testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Uy*Utau*Uxbar*Utau;
                         testCyc = 12;
                         cycleTime = 4 * pulse + 6 * tau;
-                        U0 = expm(-1i*Havg*2*pi*cycleTime);
+                        U3 = expm(-1i*Havg*2*pi*cycleTime);
                         U1 = expm(-1i*H0*2*pi*cycleTime);
                         
                     elseif strcmp(testSequence, 'MREV8')
                         testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uybar*Utau*Uxbar*Utau;
                         testCyc = 6;
                         cycleTime = 8 * pulse + 12 * tau;            
-                        U0 = expm(-1i*Havg*2*pi*cycleTime); 
+                        U3 = expm(-1i*Havg*2*pi*cycleTime); 
                         U1 = expm(-1i*H0*2*pi*cycleTime);
 
                         
@@ -200,13 +211,13 @@ for j=1:length(as)
                         Havg = (Delta / 3) * (X + Y + Z) * (1 + a); % average Hamiltonian for WHH-4
                         testCyc = 1; % FIX THIS
                         cycleTime = 3 * tau + 6 * pulse;
-                        U0 = expm(-1i*Havg*2*pi*cycleTime);
+                        U1 = expm(-1i*Havg*2*pi*cycleTime);
                         
                     elseif strcmp(testSequence, 'CORY') % Not currently functional
                         testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uy*Utau*Ux*Utau;
                         Havg = 0;
                         testCyc = 1;
-                        U0 = 1;
+                        U1 = 1;
                         cycleTime = 72 * tau + 48 * pulse;
                     
                     elseif strcmp(testSequence, 'CORY24')
@@ -219,63 +230,65 @@ for j=1:length(as)
 
                     % define initial states
                     % % X as initial state
-                    rho0=X; % finite-width WHH
+            %        rho0=X; % finite-width WHH
                     % NHAT as initial state
                     %rho0=NHAT; % finite-width WHH
-                    rho1=rho0; % ideal WHH
-                    rho2=rho0; % zeroth order WHH approximation
+            %        rho1=rho0; % ideal WHH
+            %        rho2=rho0; % zeroth order WHH approximation
 
-                    rhoinit = rho0;
-                    normD = trace(rho0*rho0);
+            %        rhoinit = rho0;
+            %        normD = trace(rho0*rho0);
 
-                    Ncyc = ceil(cutoffTime / cycleTime);
-                    fidelity0 = zeros(Ncyc, 1);
+                    %Ncyc = ceil(cutoffTime / cycleTime);
+                    Ncyc = 1;
+                    testCyc = 1;
+                    fidelity3 = zeros(Ncyc, 1);
                     fidelity1 = zeros(Ncyc, 1);
 
                     %Wahuha Sequence
                     Ucum0 = testUnitary;
                     Ucum1 = U1; % 1 term
-                    Ucum3 = U0; % 3 terms
+                    Ucum3 = U3; % 3 terms
 
-                    simTime = 0;
+                    %simTime = 0;
                     cycleCount = 0;
                     
-                    while simTime < cutoffTime
-                        
+                    %while simTime < cutoffTime
+                    while cycleCount < testCyc    
+                    
                         cycleCount = cycleCount + 1;
                         
                         % fidelity metric for unitary operators
-                        fidelity0(cycleCount) = metric(Ucum0, Ucum3, N); %exp compared to 1term
-                        fidelity1(cycleCount) = metric(Ucum0, Ucum1, N); %exp compared to 3terms
+                        fidelity3(cycleCount) = metric(Ucum0, Ucum3, N); %exp compared to 3terms
+                        fidelity1(cycleCount) = metric(Ucum0, Ucum1, N); %exp compared to 1terms
                         Ucum0 = Ucum0 * testUnitary;
-                        Ucum1 = Ucum0 * U1; % 1 term
-                        Ucum3 = Ucum3 * U0; % 3 terms
+                        Ucum1 = Ucum1 * U1; % 1 term
+                        Ucum3 = Ucum3 * U3; % 3 terms
 
                         % Unitary evolution
-                        rho0 = testUnitary*rho0*testUnitary';    %experimental
-                        rho1 = U1*rho1*U1';                      %average hamiltonian (1 term)
-                        rho2 = U0*rho2*U0';                      %average hamiltonian (3 terms)
+                %        rho0 = testUnitary*rho0*testUnitary';    %experimental
+                %        rho1 = U1*rho1*U1';                      %average hamiltonian (1 term)
+                %        rho2 = U3*rho2*U3';                      %average hamiltonian (3 terms)
 
                         % Adjust time
-                        simTime = simTime + cycleTime;
+                        %simTime = simTime + cycleTime;
                     end
-                    raw_f_results0(j, pulseCount, tauCount, deltaCount, couplingCount) = fidelity0(cycleCount);
+                    raw_f_results3(j, pulseCount, tauCount, deltaCount, couplingCount) = fidelity3(cycleCount);
                     raw_f_results1(j, pulseCount, tauCount, deltaCount, couplingCount) = fidelity1(cycleCount);
         % SPIN SIMULATION ENDS HERE - - - - - - - - - - - - - - - - - - 
-                    
-                    % COMPLIE RESULTS
+                    % COMPILE RESULTS
                 end
             end
         end
 
     end
-    save(strcat(string(j),'_',testSequence,'.mat'),'raw_f_results0','raw_f_results1','raw_h1s','raw_h2s')
+    %save(strcat(string(j),'_',testSequence,'.mat'),'raw_f_results3','raw_f_results1','raw_h1s','raw_h2s')
 end
 
 %% Save Results
 
 filename = strcat(testSequence,'_H0+H1+H2_meshing=',string(meshing),'_',date,'.mat');
-save(filename, 'raw_f_results0', 'raw_f_results1', 'taus','pulses','deltas','couplings','meshing', 'raw_h1s', 'raw_h2s') 
+save(filename, 'raw_f_results3', 'raw_f_results1', 'taus','pulses','deltas','couplings','meshing', 'raw_h1s', 'raw_h2s') 
 
 %% FUNCTION DEFINITIONS
 
@@ -369,4 +382,23 @@ end
 
 function orh = matOrder(A) % calculates the magnitude of a matrix
     orh = log10(sqrt(trace(A*A)));
+end
+
+function sequence = getSequence(sequenceName)
+    global X Y
+    %WAHUHA
+    if strcmp(sequenceName, 'WHH')
+        sequence.Pulses = {-X, Y, -Y, X};
+        sequence.Taus = [1 1 2 1 1];
+
+    %MREV-8
+    elseif strcmp(sequenceName, 'MREV8')
+        sequence.Pulses = {-X, -Y, Y, X, X, -Y, Y, -X}; % Check this
+        sequence.Taus = [1 1 2 1 2 1 2 1 1];
+
+    %CORY 48
+    elseif strcmp(sequenceName, 'CORY48')
+        sequence.Pulses = {X, Y, -X, Y, X, Y, X, Y, X, -Y, X, Y, -Y, -X, Y, -X, -Y, -X, -Y, -X, -Y, X, -Y, -X, -X, Y, -X, -Y, -X, Y, X, -Y, -X, -Y, X, -Y, Y, -X, Y, X, Y, -X, -Y, X, Y, X, -Y, X};
+        sequence.Taus = [1 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 1];
+    end
 end
