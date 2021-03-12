@@ -65,7 +65,6 @@ end
 
 sequence = getSequence(testSequence);
 Pulses = sequence.Pulses;
-Taus = sequence.Taus;
 
 
 %% Setup Result Storage
@@ -96,8 +95,8 @@ for j=1:length(as)
             end
             
             for tauCount=1:meshing
-                tau=taus(tauCount);               
-                Taus = tau * Taus;                
+                tau=taus(tauCount);  % lowercase 'taus' are the different values to test             
+                Taus = tau * sequence.Taus;   % uppercase 'Taus' are the times between pulses in the sequence (usually either tau or 2*tau)
                 Utau=(expm(-1i*Hint*2*pi*tau));
                 UhalfTau = (expm(-1i*Hint*pi*tau));
 
@@ -181,10 +180,10 @@ for j=1:length(as)
                     Uybar = (expm(-1i*2*pi*(Hint-f1*Y)*pulse));
 
                     %delta pulse unitary operators
-                    %U1 = (expm(-1i*2*pi*(f1*X)*pulse));
-                    %U2 = (expm(-1i*2*pi*(f1*Y)*pulse));
-                    %U3 = (expm(-1i*2*pi*(-f1*X)*pulse));
-                    %U4 = (expm(-1i*2*pi*(-f1*Y)*pulse));
+                    %Ux = (expm(-1i*2*pi*(f1*X)*pulse));
+                    %Uy = (expm(-1i*2*pi*(f1*Y)*pulse));
+                    %Uxbar = (expm(-1i*2*pi*(-f1*X)*pulse));
+                    %Uybar = (expm(-1i*2*pi*(-f1*Y)*pulse));
                
                 
 
@@ -193,14 +192,12 @@ for j=1:length(as)
                     % (Choose desired sequence to test)
                     if strcmp(testSequence, 'WHH')
                         testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Uy*Utau*Uxbar*Utau;
-                        testCyc = 12;
                         cycleTime = 4 * pulse + 6 * tau;
                         U3 = expm(-1i*Havg*2*pi*cycleTime);
                         U1 = expm(-1i*H0*2*pi*cycleTime);
                         
                     elseif strcmp(testSequence, 'MREV8')
                         testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uybar*Utau*Uxbar*Utau;
-                        testCyc = 6;
                         cycleTime = 8 * pulse + 12 * tau;            
                         U3 = expm(-1i*Havg*2*pi*cycleTime); 
                         U1 = expm(-1i*H0*2*pi*cycleTime);
@@ -209,19 +206,25 @@ for j=1:length(as)
                     elseif strcmp(testSequence, 'WK1')
                         testUnitary = UhalfTau*Uxbar*Uxbar*Uy*Utau*Uxbar*Utau*Uy*Uxbar*UhalfTau;
                         Havg = (Delta / 3) * (X + Y + Z) * (1 + a); % average Hamiltonian for WHH-4
-                        testCyc = 1; % FIX THIS
                         cycleTime = 3 * tau + 6 * pulse;
                         U1 = expm(-1i*Havg*2*pi*cycleTime);
                         
-                    elseif strcmp(testSequence, 'CORY') % Not currently functional
+                    elseif strcmp(testSequence, 'CORY48')
                         testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uy*Utau*Ux*Utau;
                         Havg = 0;
-                        testCyc = 1;
                         U1 = 1;
                         cycleTime = 72 * tau + 48 * pulse;
                     
                     elseif strcmp(testSequence, 'CORY24')
                         testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uy*Utau*Ux*Utau;
+                        Havg = 0;
+                        U1 = 1;
+                        cycleTime = 36 * tau + 24* pulse;
+                        
+                    %elseif strcmp(testSequence, 'YXX24')
+                        % Do this
+                    %elseif strcmp(testSequence, 'YXX48')
+                        % Do this
                     end
                     
                     %Ncyc = testCyc + 1;
@@ -246,9 +249,9 @@ for j=1:length(as)
                     fidelity1 = zeros(Ncyc, 1);
 
                     %Wahuha Sequence
-                    Ucum0 = testUnitary;
+                    Ucum0 = testUnitary; % experimental
                     Ucum1 = U1; % 1 term
-                    Ucum3 = U3; % 3 terms
+                    Ucum3 = U3; % 3 terms (currently only WHH, MREV8)
 
                     %simTime = 0;
                     cycleCount = 0;
