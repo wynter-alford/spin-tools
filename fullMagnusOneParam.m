@@ -2,22 +2,22 @@
 
 global dim pulse f1 Pulses X Y Z
 
-sequenceName = 'MREV8';  % select sequence to test over
+sequenceName = 'AZ48' ;  % select sequence to test over
 testVarName = 'Tau'; % only affects file name currently
-testValueCount = 30;
+testValueCount = 20;
 testValueMax = 20e-6;
 
-couplingsCount = 6; % how many different coupling matrices to average over
+couplingsCount = 2; % how many different coupling matrices to average over
 
-N = 4;
+N = 1;
 dim = 2^N;
 Ncyc = 1;
 pulse = 0;
 tau = 3e-6;  % delay spacing
-coupling = 5000;
+coupling = 0;
 f1 = 1/4/pulse; %Can adjust f1 and w1 by changing 'pulse' variable
 w1 = 2*pi*f1;
-Delta = 500;
+Delta = 1;
 
 % initvars
 z=0.5*sparse([1 0; 0 -1]);x=0.5*sparse( [ 0 1;1 0]); y=1i*0.5*sparse([0 -1;1 0]);
@@ -38,17 +38,17 @@ end
 
 
 
-%% Initialize Hamiltonians (original Spin Sim code)
+%% Initialize Hamiltonians (modified code)
 
 Hdips = cell(couplingsCount,1);
-% Generate 8 dipole Hamiltonians, each with a different coupling matrix
+% Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
 for j=1:couplingsCount
     dip = abs(randn(N));
     dip = triu(dip,1) + triu(dip,1)';
     Hdips{j} = getHdip(N, dim, x, y, z, dip);
 end
 
-%% Iterate over different Delta values to see how term magnitude changes
+%% Iterate over different parameter values to see how term magnitude changes
 
 testVars = zeros(testValueCount,1);
 
@@ -229,8 +229,8 @@ for d=1:length(testVars)
 end
 
 %% Save Result Output
-fileDescriptor = strcat(sequenceName,'_',testVarName,'_magnus_results_',date,'.mat');
-save(strcat(testVarName,fileDescriptor), 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars')
+fileDescriptor = strcat(sequenceName,'_',testVarName,'_magnus_results_A_',date,'.mat');
+save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars')
 % save(strcat('h0_',fileDescriptor),'results_h0');
 % save(strcat('h1_',fileDescriptor),'results_h1');
 % save(strcat('h2_',fileDescriptor),'results_h2');
@@ -324,6 +324,28 @@ function sequence = getSequence(sequenceName)
     elseif strcmp(sequenceName, 'CORY48')
         sequence.Pulses = {X, Y, -X, Y, X, Y, X, Y, X, -Y, X, Y, -Y, -X, Y, -X, -Y, -X, -Y, -X, -Y, X, -Y, -X, -X, Y, -X, -Y, -X, Y, X, -Y, -X, -Y, X, -Y, Y, -X, Y, X, Y, -X, -Y, X, Y, X, -Y, X};
         sequence.Taus = [1 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 1];
+    
+    %YXX-48
+    elseif strcmp(sequenceName,'YXX48')
+        sequence.Pulses = {Y, -X,-X,Y,-X,-X,-Y,X,X,Y,-X,-X,-Y,X,X,-Y,X,X,Y,-X,-X,Y,-X,-X,-Y,X,X,Y,-X,-X,-Y,X,X,-Y,X,X,Y,-X,-X,-Y,X,X,Y,-X,-X,-Y,X,X};
+        sequence.Taus = ones(49,1);
+    
+    %YXX-24
+    elseif strcmp(sequenceName,'YXX24')
+        sequence.Pulses = {-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,X,X,Y,-X,X,-Y,X,X,-Y,X,-X,Y,-X,-X};
+        sequence.Taus = ones(25,1);
+    
+    %AZ-48
+    elseif strcmp(sequenceName,'AZ48')
+        sequence.Pulses = {-X,Y,Y,X,Y,Y,-Y,X,X,-Y,X,X,Y,X,X,-Y,X,X,-Y,X,-Y,X,X,-Y,-X,-X,Y,Y,-X,Y,Y,-Y,X,-Y,-Y,X,-Y,X,X,-Y,X,X,-Y,-X,-X,-Y,-X,-X};
+        sequence.Taus = ones(49,1);
+    
+    %Symmetrized 48 from YXX-24
+    elseif strcmp(sequenceName,'YXX24S')
+        sequence.Pulses = {-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,X,X,Y,-X,X,-Y,X,X,-Y,X,-X,Y,-X,-X,X,X,-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,-X,-X,Y,-X,X,-Y,X,X,-Y,X,-X,Y};
+        sequence.Taus = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
+    
     end
+    
 end
 
