@@ -7,7 +7,7 @@ The first section of this notebook outlines the code used to compute the terms o
 ### fullMagnusOneParam.m
 This is the actual script used to compute terms in the magnus expansion.
 
-### spinSimOneParam.ipynb
+### One Parameter SpinSim.ipynb
 This script generates 1D plots of fidelity from a single parameter for various pulse sequences.
 
 ### oldFullAnalysis.m
