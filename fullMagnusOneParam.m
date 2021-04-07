@@ -2,22 +2,25 @@
 
 global dim pulse f1 Pulses X Y Z
 
-sequenceName = 'AZ48' ;  % select sequence to test over
+% Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48
+sequenceName = 'AZ48' ;  % select sequence to test over.
+
+
 testVarName = 'Tau'; % only affects file name currently
 testValueCount = 20;
-testValueMax = 20e-6;
+testValueMax = 10e-6;
 
-couplingsCount = 2; % how many different coupling matrices to average over
+couplingsCount = 4; % how many different coupling matrices to average over
 
 N = 1;
 dim = 2^N;
 Ncyc = 1;
-pulse = 0;
+pulse = 1.4e-6;
 tau = 3e-6;  % delay spacing
-coupling = 0;
+coupling = 5000;
 f1 = 1/4/pulse; %Can adjust f1 and w1 by changing 'pulse' variable
 w1 = 2*pi*f1;
-Delta = 1;
+Delta = 500;
 
 % initvars
 z=0.5*sparse([1 0; 0 -1]);x=0.5*sparse( [ 0 1;1 0]); y=1i*0.5*sparse([0 -1;1 0]);
@@ -70,6 +73,7 @@ for d=1:length(testVars)
     testVars(d)=tau; % ADJUST FOR TEST VAR
     
     sequence = getSequence(sequenceName);
+        
     Pulses = sequence.Pulses;
     Taus = tau * sequence.Taus;
     tCyc = sum(Taus);
@@ -79,6 +83,8 @@ for d=1:length(testVars)
         Hdip = Hdips{c};
         Hsys = Hdip*coupling + Z*Delta;
         
+        hsys = matOrder(Hsys);
+        
         toggledHsys = {};
         for p = 0:length(Pulses)
             toggledHsys{p+1} = getURF(p)'*Hsys*getURF(p);
@@ -86,7 +92,7 @@ for d=1:length(testVars)
 
         %calcMagnus
         %Magnus Calculation is done here ------------------------------------
-
+        
         %Calculate 0th order Magnus term
         H0 = zeros(dim,dim);
         for k=0:length(Pulses)
@@ -97,7 +103,7 @@ for d=1:length(testVars)
         end
 
         H0 = (1/tCyc)*H0;
-        h0 = real(matOrder(H0));
+        h0 = matOrder(H0)/hsys;
 
 
         %Calculate 1st order Magnus term
@@ -111,7 +117,7 @@ for d=1:length(testVars)
         end
 
         H1 = (1/(2*1i*tCyc))*H1;
-        h1 = real(matOrder(H1));
+        h1 = matOrder(H1)/hsys;
 
         %Calculate 2nd order Magnus term
         H2 = zeros(dim,dim);
@@ -129,7 +135,7 @@ for d=1:length(testVars)
         end
 
         H2 = (-1/(6*tCyc))*H2;
-        h2 = real(matOrder(H2));
+        h2 = matOrder(H2)/hsys;
 
         % Calculate 3rd order Magnus term
         H3 = zeros(dim,dim);
@@ -157,7 +163,7 @@ for d=1:length(testVars)
         end
 
         H3 = (-1/(12*1i*tCyc))*H3;
-        h3 = real(matOrder(H3));
+        h3 = matOrder(H3)/hsys;
 
         % Calculate the 4th term of the Magnus Expansion
         H4 = zeros(dim,dim);
@@ -209,7 +215,7 @@ for d=1:length(testVars)
         end
 
         H4 = (1/tCyc)*H4;
-        h4 = real(matOrder(H4));
+        h4 = matOrder(H4)/hsys;
 
 
         % Magnus Calculation ends here ---------------------------------------
@@ -229,7 +235,7 @@ for d=1:length(testVars)
 end
 
 %% Save Result Output
-fileDescriptor = strcat(sequenceName,'_',testVarName,'_magnus_results_A_',date,'.mat');
+fileDescriptor = strcat(sequenceName,'_',testVarName,'_magnus_results_',date,'.mat');
 save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars')
 % save(strcat('h0_',fileDescriptor),'results_h0');
 % save(strcat('h1_',fileDescriptor),'results_h1');
@@ -243,8 +249,8 @@ function ct = comm(A,B) % calculates the commutator of a pair of matrices
     ct = A*B-B*A;
 end
 
-function orh = matOrder(A) % calculates the magnitude of a matrix
-    orh = log10(sqrt(trace(A*A)));
+function order = matOrder(A) % calculates the magnitude of a matrix
+    order = real(sqrt(trace(A*A)));
 end
 
 % Find the frame transformation U_rf to eliminate the RF Hamiltonian
