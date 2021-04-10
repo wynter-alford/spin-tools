@@ -3,18 +3,27 @@
 global dim pulse f1 Pulses X Y Z
 
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48
-sequenceName = 'AZ48' ;  % select sequence to test over.
+sequenceName = 'MREV8' ;  % select sequence to test over.
+
+testVarName = 'coupling_lo'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
 
 
-testVarName = 'Tau'; % only affects file name currently
-testValueCount = 20;
-testValueMax = 10e-6;
+testValueCount = 30;
+
+if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
+    testValueMax = 10e-6;
+elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')
+    testValueMax = 1000;
+elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')
+    testValueMax = 50000;
+elseif strcmp(testVarName,'coupling_lo')
+    testValueMax = 5000;
+end
 
 couplingsCount = 4; % how many different coupling matrices to average over
 
-N = 1;
+N = 4;
 dim = 2^N;
-Ncyc = 1;
 pulse = 1.4e-6;
 tau = 3e-6;  % delay spacing
 coupling = 5000;
@@ -69,9 +78,18 @@ raw_results_h4 = zeros(length(testVars),couplingsCount);
 
 
 for d=1:length(testVars)
-    tau = d*(testValueMax/testValueCount); % ADJUST FOR TEST VAR 
-    testVars(d)=tau; % ADJUST FOR TEST VAR
     
+    if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
+        tau = d*(testValueMax/testValueCount); % ADJUST FOR TEST VAR 
+        testVars(d)=tau; % ADJUST FOR TEST VAR
+    elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')
+        Delta = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
+        testVars(d)=Delta;
+    elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')||strcmp(testVarName,'coupling_lo')
+        coupling = d*(testValueMax/testValueCount);
+        testVars(d)=coupling;
+    end
+  
     sequence = getSequence(sequenceName);
         
     Pulses = sequence.Pulses;
@@ -232,11 +250,13 @@ for d=1:length(testVars)
     results_h2(d)=mean(raw_results_h2(d,:));
     results_h3(d)=mean(raw_results_h3(d,:));
     results_h4(d)=mean(raw_results_h4(d,:));
+    
+    d
 end
 
 %% Save Result Output
 fileDescriptor = strcat(sequenceName,'_',testVarName,'_magnus_results_',date,'.mat');
-save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars')
+save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount')
 % save(strcat('h0_',fileDescriptor),'results_h0');
 % save(strcat('h1_',fileDescriptor),'results_h1');
 % save(strcat('h2_',fileDescriptor),'results_h2');
@@ -335,23 +355,28 @@ function sequence = getSequence(sequenceName)
     elseif strcmp(sequenceName,'YXX48')
         sequence.Pulses = {Y, -X,-X,Y,-X,-X,-Y,X,X,Y,-X,-X,-Y,X,X,-Y,X,X,Y,-X,-X,Y,-X,-X,-Y,X,X,Y,-X,-X,-Y,X,X,-Y,X,X,Y,-X,-X,-Y,X,X,Y,-X,-X,-Y,X,X};
         sequence.Taus = ones(49,1);
+        sequence.Taus(1)=0;
     
     %YXX-24
     elseif strcmp(sequenceName,'YXX24')
         sequence.Pulses = {-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,X,X,Y,-X,X,-Y,X,X,-Y,X,-X,Y,-X,-X};
         sequence.Taus = ones(25,1);
+        sequence.Taus(1)=0;
     
     %AZ-48
     elseif strcmp(sequenceName,'AZ48')
         sequence.Pulses = {-X,Y,Y,X,Y,Y,-Y,X,X,-Y,X,X,Y,X,X,-Y,X,X,-Y,X,-Y,X,X,-Y,-X,-X,Y,Y,-X,Y,Y,-Y,X,-Y,-Y,X,-Y,X,X,-Y,X,X,-Y,-X,-X,-Y,-X,-X};
         sequence.Taus = ones(49,1);
+        sequence.Taus(1)=0;
     
     %Symmetrized 48 from YXX-24
     elseif strcmp(sequenceName,'YXX24S')
         sequence.Pulses = {-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,X,X,Y,-X,X,-Y,X,X,-Y,X,-X,Y,-X,-X,X,X,-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,-X,-X,Y,-X,X,-Y,X,X,-Y,X,-X,Y};
         sequence.Taus = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
-    
+        sequence.Taus(1)=0;
     end
     
 end
+
+
 
