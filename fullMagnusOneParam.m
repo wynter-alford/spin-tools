@@ -5,8 +5,7 @@ global dim pulse f1 Pulses X Y Z
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48
 sequenceName = 'MREV8' ;  % select sequence to test over.
 
-testVarName = 'coupling_lo'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
-
+testVarName = 'tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
 
 testValueCount = 30;
 
@@ -70,12 +69,27 @@ results_h2 = zeros(length(testVars),1);
 results_h3 = zeros(length(testVars),1);
 results_h4 = zeros(length(testVars),1);
 
+results_f0 = zeros(length(testVars),1);
+results_f2 = zeros(length(testVars),1);
+results_f4 = zeros(length(testVars),1);
+
+results_Df0 = zeros(length(testVars),1);
+results_Df2 = zeros(length(testVars),1);
+results_Df4 = zeros(length(testVars),1);
+
 raw_results_h0 = zeros(length(testVars),couplingsCount);
 raw_results_h1 = zeros(length(testVars),couplingsCount);
 raw_results_h2 = zeros(length(testVars),couplingsCount);
 raw_results_h3 = zeros(length(testVars),couplingsCount);
 raw_results_h4 = zeros(length(testVars),couplingsCount);
 
+raw_f0 = zeros(length(testVars),couplingsCount);
+raw_f2 = zeros(length(testVars),couplingsCount);
+raw_f4 = zeros(length(testVars),couplingsCount);
+
+raw_Df0 = zeros(length(testVars),couplingsCount);
+raw_Df2 = zeros(length(testVars),couplingsCount);
+raw_Df4 = zeros(length(testVars),couplingsCount);
 
 for d=1:length(testVars)
     
@@ -94,6 +108,18 @@ for d=1:length(testVars)
         
     Pulses = sequence.Pulses;
     Taus = tau * sequence.Taus;
+    
+    %pulse length corrections to Taus - - - - - - 
+    Taus(1) = Taus(1) + pulse/2;
+    
+    for ttt = 2:(length(Taus)-1)
+        Taus(ttt) = Taus(ttt) + pulse;
+    end
+    
+    Taus(length(Taus)) = Taus(length(Taus)) + pulse/2;
+    
+    %end pulse-length corrections to Taus - - - - 
+    
     tCyc = sum(Taus);
     
     for c=1:couplingsCount
@@ -244,25 +270,81 @@ for d=1:length(testVars)
         raw_results_h2(d,c) = h2;
         raw_results_h3(d,c) = h3;
         raw_results_h4(d,c) = h4;
+        
+       
+        
+        % FIDELITY CALCULATION HERE
+        
+        % get experimental unitary
+        
+        Utau= expm(-1i*Hsys*2*pi*tau);
+        UhalfTau = expm(-1i*Hsys*pi*tau); 
+        
+        
+        Ux = expm(-1i*2*pi*(Hsys+f1*X)*pulse); %experimental pulses
+        Uy = expm(-1i*2*pi*(Hsys+f1*Y)*pulse);
+        Uxbar = expm(-1i*2*pi*(Hsys-f1*X)*pulse);
+        Uybar = expm(-1i*2*pi*(Hsys-f1*Y)*pulse);
+        
+        UDx = expm(-1i*Hsys*2*pi*pulse/2)*expm(-1i*pi*X/2)*expm(-1i*Hsys*2*pi*pulse/2);  % instantaneous pulses
+        UDy = expm(-1i*Hsys*2*pi*pulse/2)*expm(-1i*pi*Y/2)*expm(-1i*Hsys*2*pi*pulse/2);
+        UDxbar = expm(-1i*Hsys*2*pi*pulse/2)*expm(-1i*pi*(-X/2))*expm(-1i*Hsys*2*pi*pulse/2);
+        UDybar = expm(-1i*Hsys*2*pi*pulse/2)*expm(-1i*pi*(-Y/2))*expm(-1i*Hsys*2*pi*pulse/2);
+ 
+        if strcmp(sequenceName, 'WHH')
+            testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau;
+            deltaUnitary = Utau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau;            
+        elseif strcmp(sequenceName, 'MREV8')
+            testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uybar*Utau*Uxbar*Utau;
+            deltaUnitary = Utau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDybar*Utau*UDxbar*Utau;
+        elseif strcmp(sequenceName, 'CORY48') 
+            testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uy*Utau*Ux*Utau;
+            deltaUnitary = Utau*UDx*Utau*UDybar*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDx*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDybar*Utau*UDxbar*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDybar*Utau*UDxbar*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDx*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDy*Utau*UDx*Utau;
+        elseif strcmp(sequenceName, 'YXX48')
+            testUnitary = Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau;
+            deltaUnitary = Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy;
+        elseif strcmp(sequenceName, 'YXX24')
+            testUnitary = Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Ux*Utau*Uybar*Utau;
+            deltaUnitary = Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDx*Utau*UDybar*Utau;
+        elseif strcmp(sequenceName, 'AZ48')
+            testUnitary = Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uy*Utau*Uy*Utau*Ux*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau;
+            deltaUnitary = Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDy*Utau*UDy*Utau*UDxbar*Utau*UDy*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDy*Utau*UDy*Utau*UDx*Utau*UDy*Utau*UDy*Utau*UDxbar;
+        end
+        
+        U0 = expm(-1i*H0*2*pi*tCyc);
+        U2 = expm(-1i*(H0+H1+H2)*2*pi*tCyc);
+        U4 = expm(-1i*(H0+H1+H2+H3+H4)*2*pi*tCyc);
+
+        raw_f0(d,c) = metric(testUnitary, U0, N);
+        raw_f2(d,c) = metric(testUnitary, U2, N);
+        raw_f4(d,c) = metric(testUnitary, U4, N);
+        
+        raw_Df0(d,c) = metric(deltaUnitary, U0, N);
+        raw_Df2(d,c) = metric(deltaUnitary, U2, N);
+        raw_Df4(d,c) = metric(deltaUnitary, U4, N); % "fully corrected" fidelity
+        
     end
+    
     results_h0(d)=mean(raw_results_h0(d,:));
     results_h1(d)=mean(raw_results_h1(d,:));
     results_h2(d)=mean(raw_results_h2(d,:));
     results_h3(d)=mean(raw_results_h3(d,:));
     results_h4(d)=mean(raw_results_h4(d,:));
     
+    results_f0(d)=mean(raw_f0(d,:));
+    results_f2(d)=mean(raw_f2(d,:));
+    results_f4(d)=mean(raw_f4(d,:));
+    
+    results_Df0(d)=mean(raw_Df0(d,:));
+    results_Df2(d)=mean(raw_Df0(d,:));
+    results_Df4(d)=mean(raw_Df0(d,:));
+    
     d
 end
 
 %% Save Result Output
-fileDescriptor = strcat(sequenceName,'_',testVarName,'_magnus_results_',date,'.mat');
-save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount')
-% save(strcat('h0_',fileDescriptor),'results_h0');
-% save(strcat('h1_',fileDescriptor),'results_h1');
-% save(strcat('h2_',fileDescriptor),'results_h2');
-% save(strcat('h3_',fileDescriptor),'results_h3');
-% save(strcat('h4_',fileDescriptor),'results_h4');
-% save(strcat(testVarName,'s_',fileDescriptor),'testVars');
+fileDescriptor = strcat(sequenceName,'_',testVarName,'_PC_magnus_results_AND_fidelities_',date,'.mat');
+save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f0','results_f2','results_f4')
 
 %% FUNCTION DEFINITIONS
 function ct = comm(A,B) % calculates the commutator of a pair of matrices
@@ -372,11 +454,9 @@ function sequence = getSequence(sequenceName)
     %Symmetrized 48 from YXX-24
     elseif strcmp(sequenceName,'YXX24S')
         sequence.Pulses = {-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,X,X,Y,-X,X,-Y,X,X,-Y,X,-X,Y,-X,-X,X,X,-Y,X,-X,Y,-X,-X,Y,-X,X,-Y,-X,-X,Y,-X,X,-Y,X,X,-Y,X,-X,Y};
-        sequence.Taus = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
-        sequence.Taus(1)=0;
+        sequence.Taus = [0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
     end
     
 end
-
 
 
