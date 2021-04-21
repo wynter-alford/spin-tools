@@ -18,3 +18,6 @@ This was intended to work as an updated version of *oldFullAnalysis.m* that was 
 
 ### fullMagnusGrid.m
 Decrepit.
+
+## code
+Contains several utility functions required to run some of the above scripts, with the exception of fullMagnusOneParam which has all functions defined at the end of the script. 
