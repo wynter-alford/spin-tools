@@ -5,7 +5,7 @@ global dim pulse f1 Pulses X Y Z
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48
 sequenceName = 'MREV8' ;  % select sequence to test over.
 
-testVarName = 'tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
+testVarName = 'delta'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
 
 testValueCount = 30;
 
@@ -108,15 +108,6 @@ for d=1:length(testVars)
         
     Pulses = sequence.Pulses;
     Taus = tau * sequence.Taus;
-    
-    %pulse length corrections to Taus - - - - - - 
-    Taus(1) = Taus(1) + pulse/2;
-    
-    for ttt = 2:(length(Taus)-1)
-        Taus(ttt) = Taus(ttt) + pulse;
-    end
-    
-    Taus(length(Taus)) = Taus(length(Taus)) + pulse/2;
     
     %end pulse-length corrections to Taus - - - - 
     
@@ -277,9 +268,8 @@ for d=1:length(testVars)
         
         % get experimental unitary
         
-        Utau= expm(-1i*Hsys*2*pi*tau);
-        UhalfTau = expm(-1i*Hsys*pi*tau); 
-        
+        Utau= expm(-1i*Hsys*2*pi*(tau-pulse));
+        UhalfTau = expm(-1i*Hsys*2*pi*(tau-pulse/2));        
         
         Ux = expm(-1i*2*pi*(Hsys+f1*X)*pulse); %experimental pulses
         Uy = expm(-1i*2*pi*(Hsys+f1*Y)*pulse);
@@ -292,23 +282,23 @@ for d=1:length(testVars)
         UDybar = expm(-1i*Hsys*2*pi*pulse/2)*expm(-1i*pi*(-Y/2))*expm(-1i*Hsys*2*pi*pulse/2);
  
         if strcmp(sequenceName, 'WHH')
-            testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau;
-            deltaUnitary = Utau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau;            
+            testUnitary = UhalfTau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*UhalfTau;
+            deltaUnitary = UhalfTau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*UhalfTau;            
         elseif strcmp(sequenceName, 'MREV8')
-            testUnitary = Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uybar*Utau*Uxbar*Utau;
-            deltaUnitary = Utau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDybar*Utau*UDxbar*Utau;
+            testUnitary = UhalfTau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uybar*Utau*Uxbar*UhalfTau;
+            deltaUnitary = UhalfTau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDybar*Utau*UDxbar*UhalfTau;
         elseif strcmp(sequenceName, 'CORY48') 
-            testUnitary = Utau*Ux*Utau*Uybar*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uy*Utau*Ux*Utau;
-            deltaUnitary = Utau*UDx*Utau*UDybar*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDx*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDybar*Utau*UDxbar*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDybar*Utau*UDxbar*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDx*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDy*Utau*UDx*Utau;
+            testUnitary = UhalfTau*Ux*Utau*Uybar*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Ux*Utau*Uy*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uybar*Utau*Uxbar*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Ux*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uxbar*Utau*Uy*Utau*Utau*Uxbar*Utau*Uybar*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uybar*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Ux*Utau*Utau*Uy*Utau*Uxbar*Utau*Utau*Uy*Utau*Ux*UhalfTau;
+            deltaUnitary = UhalfTau*UDx*Utau*UDybar*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDx*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDx*Utau*UDy*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDybar*Utau*UDxbar*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDybar*Utau*UDxbar*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDx*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDxbar*Utau*UDy*Utau*Utau*UDxbar*Utau*UDybar*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDybar*Utau*UDx*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDy*Utau*UDx*Utau*Utau*UDy*Utau*UDxbar*Utau*Utau*UDy*Utau*UDx*UhalfTau;
         elseif strcmp(sequenceName, 'YXX48')
-            testUnitary = Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau;
-            deltaUnitary = Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy;
+            testUnitary = UhalfTau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy;
+            deltaUnitary = UhalfTau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy;
         elseif strcmp(sequenceName, 'YXX24')
-            testUnitary = Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Ux*Utau*Uybar*Utau;
-            deltaUnitary = Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDx*Utau*UDybar*Utau;
+            testUnitary = UhalfTau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uxbar*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uy*Utau*Uxbar*Utau*Ux*Utau*Uybar;
+            deltaUnitary = UhalfTau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDxbar*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDy*Utau*UDxbar*Utau*UDx*Utau*UDybar;
         elseif strcmp(sequenceName, 'AZ48')
-            testUnitary = Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uy*Utau*Uy*Utau*Ux*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau;
-            deltaUnitary = Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDy*Utau*UDy*Utau*UDxbar*Utau*UDy*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDy*Utau*UDy*Utau*UDx*Utau*UDy*Utau*UDy*Utau*UDxbar;
+            testUnitary = UhalfTau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau*Uy*Utau*Uy*Utau*Uxbar*Utau*Uxbar*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uy*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Ux*Utau*Ux*Utau*Uybar*Utau*Uy*Utau*Uy*Utau*Ux*Utau*Uy*Utau*Uy*Utau*Uxbar;
+            deltaUnitary = UhalfTau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDy*Utau*UDy*Utau*UDxbar*Utau*UDy*Utau*UDy*Utau*UDxbar*Utau*UDxbar*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDy*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDx*Utau*UDx*Utau*UDybar*Utau*UDy*Utau*UDy*Utau*UDx*Utau*UDy*Utau*UDy*Utau*UDxbar;
         end
         
         U0 = expm(-1i*H0*2*pi*tCyc);
@@ -344,7 +334,7 @@ end
 
 %% Save Result Output
 fileDescriptor = strcat(sequenceName,'_',testVarName,'_PC_magnus_results_AND_fidelities_',date,'.mat');
-save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f0','results_f2','results_f4')
+save(fileDescriptor, 'results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f0','results_f2','results_f4','results_Df0','results_Df2','results_Df4')
 
 %% FUNCTION DEFINITIONS
 function ct = comm(A,B) % calculates the commutator of a pair of matrices
@@ -457,6 +447,12 @@ function sequence = getSequence(sequenceName)
         sequence.Taus = [0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
     end
     
+end
+
+function fidelity = metric(Utarget, Uexp, N)
+
+fidelity = abs(trace(Utarget' * Uexp)/2^N);
+
 end
 
 
