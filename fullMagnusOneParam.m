@@ -5,7 +5,7 @@ global dim pulse f1 Pulses X Y Z
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48
 sequenceName = 'WPW9' ;  % select sequence to test over.
 
-testVarName = 'Delta'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
+testVarName = 'Tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
 
 testValueCount = 20;
 
@@ -21,7 +21,7 @@ end
 
 couplingsCount = 3; % how many different coupling matrices to average over
 
-N = 3; %RESET TO 4
+N = 4; %RESET TO 4
 dim = 2^N;
 pulse = 1.4e-6;
 tau = 4.4e-6;  % delay spacing
@@ -51,13 +51,13 @@ getNextUsM = memoize(@getNextUs); % used later but needs to be called here
 
 %% Initialize Hamiltonians (modified code)
 
-% Hdips = cell(couplingsCount,1);
-% % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
-% for j=1:couplingsCount
-%     dip = abs(randn(N));
-%     dip = triu(dip,1) + triu(dip,1)';
-%     Hdips{j} = getHdip(N, dim, x, y, z, dip);
-% end
+Hdips = cell(couplingsCount,1);
+% Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
+for j=1:couplingsCount
+    dip = abs(randn(N));
+    dip = triu(dip,1) + triu(dip,1)';
+    Hdips{j} = getHdip(N, dim, x, y, z, dip);
+end
 
 %% Iterate over different parameter values to see how term magnitude changes
 
@@ -90,6 +90,14 @@ raw_f4 = zeros(length(testVars),couplingsCount);
 raw_Df0 = zeros(length(testVars),couplingsCount);
 raw_Df2 = zeros(length(testVars),couplingsCount);
 raw_Df4 = zeros(length(testVars),couplingsCount);
+
+raw_fTS = zeros(length(testVars),couplingsCount);
+raw_DfTS = zeros(length(testVars),couplingsCount);
+
+results_fTS = zeros(length(testVars),1);
+results_DfTS = zeros(length(testVars),1);
+
+
 
 for d=1:length(testVars)
     
@@ -269,8 +277,7 @@ for d=1:length(testVars)
         testUnitary = testUnitaries{1};
         deltaUnitary = testUnitaries{2};
 
-        U0 = speye(dim,dim);
-        %U0 = expm(-1i*H0*2*pi*tCyc);
+        U0 = expm(-1i*H0*2*pi*tCyc);
         U2 = expm(-1i*(H0+H1+H2)*2*pi*tCyc);
 %        U4 = expm(-1i*(H0+H1+H2+H3+H4)*2*pi*tCyc);
 
@@ -281,6 +288,9 @@ for d=1:length(testVars)
         raw_Df0(d,c) = metric(deltaUnitary, U0, N);
         raw_Df2(d,c) = metric(deltaUnitary, U2, N);
 %        raw_Df4(d,c) = metric(deltaUnitary, U4, N); % "fully corrected" fidelity
+
+        raw_fTS(d,c) = metric(testUnitary,speye(dim,dim),N);
+        raw_DfTS(d,c) = metric(deltaUnitary,speye(dim,dim),N);
 
         loop_convs(c) = specnorm(Hsys)*tCyc;
     end
@@ -298,14 +308,16 @@ for d=1:length(testVars)
     results_Df0(d)=mean(raw_Df0(d,:));
     results_Df2(d)=mean(raw_Df0(d,:));
 %    results_Df4(d)=mean(raw_Df0(d,:));
-    
+
+    %time suspension fidelities
+    results_fTS(d)=mean(raw_fTS(d,:));
+    results_DfTS(d)=mean(raw_DfTS(d,:));
+
     convs(d) = max(loop_convs(c));
 
     d
 end
 
-%% Plot Output
-plot(testVars-pulse,results_f0)
 
 %% Save Result Output
 %fileDescriptor = strcat(sequenceName,'_',testVarName,'_PC_magnus_results_AND_fidelities_',date,'.mat');
@@ -455,7 +467,7 @@ end
 
     
 function testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1)
-    global dim getNextUsM
+    global dim 
     
     UtauCell = {speye(dim,dim),expm(-1i*Hsys*2*pi*(tau-pulse)), expm(-1i*Hsys*2*pi*(2*tau-pulse))};
         
