@@ -1,43 +1,55 @@
-%% Setup Code (original Spin Sim code)
+%% Setup
+global dim pulse f1 Pulses X Y Z getNextUsM
 
-global dim pulse f1 Pulses X Y Z
+% Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48,
+%    AsymSub10, WPW9, WHHWHH, ML10, WPW9-2Cycle
 
-% Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48
-sequenceName = 'WPW9' ;  % select sequence to test over.
+%sequenceName = 'WHH' ;  % select sequence to test over.
+testVarName = 'Delta'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
 
-testVarName = 'Tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
 
-testValueCount = 20;
+% Control Parameters
+%testValueCount = 40;
+couplingsCount = 4; % how many different coupling matrices to average over
 
+N = 4;
+pulse = 1.4e-6;
+%tau = 4.4e-6;  % delay spacing
+coupling = 5000;
+Delta = 0;
+overRotation = 0; %0 is a perfect pulse, +/- 0.01 is a 1% over/under rotation, etc.
+
+
+%Derived parameters
+dim = 2^N;
+f1 = 1/4/pulse; %Can adjust f1 and w1 by changing 'pulse' variable
+w1 = 2*pi*f1;
+rotationError = 1+overRotation; %1 is a perfect pulse
+
+%Configure Test Variable
 if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
-    testValueMax = 10e-6;
+    testValueMax = 20e-6;
 elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')
     testValueMax = 1000;
 elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')
     testValueMax = 50000;
 elseif strcmp(testVarName,'coupling_lo')
     testValueMax = 5000;
+elseif strcmp(testVarName,'Overrotations')||strcmp(testVarName,'overrotations')
+    testValueMax = 0.03;
+elseif strcmp(testVarName,'tau1')
+    testValueMax = 2e-6;
+    testVarName = 'tau';
+elseif strcmp(testVarName,'tau2')
+    testValueMax = 8e-6;
+    testVarName = 'tau';
 end
 
-couplingsCount = 3; % how many different coupling matrices to average over
+% initvars, initCollectiveObs;
+z=0.5*sparse([1 0; 0 -1]);
+x=0.5*sparse( [ 0 1;1 0]); 
+y=1i*0.5*sparse([0 -1;1 0]);
 
-N = 4; %RESET TO 4
-dim = 2^N;
-pulse = 1.4e-6;
-tau = 4.4e-6;  % delay spacing
-coupling = 5000;
-f1 = 1/4/pulse; %Can adjust f1 and w1 by changing 'pulse' variable
-w1 = 2*pi*f1;
-Delta = 0;
-
-% initvars
-z=0.5*sparse([1 0; 0 -1]);x=0.5*sparse( [ 0 1;1 0]); y=1i*0.5*sparse([0 -1;1 0]);
-ep=sparse([1 0; 0 0]);
-em=sparse([0 0; 0 1]);
-id=speye(2);p=sparse([0 1;0 0]);m=sparse([0 0; 1 0]);
-
-
-%initCollectiveObs;
 Z=sparse(dim,dim);
 X=sparse(dim,dim);
 Y=sparse(dim,dim);
@@ -47,17 +59,18 @@ for k=1:N
       Y = Y + mykron(speye(2^(k-1)),y,speye(2^(N-k)));
 end
 
-getNextUsM = memoize(@getNextUs); % used later but needs to be called here
+getNextUsM = memoize(@getNextUs); % used later but needs to be defined here
+
 
 %% Initialize Hamiltonians (modified code)
 
-Hdips = cell(couplingsCount,1);
-% Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
-for j=1:couplingsCount
-    dip = abs(randn(N));
-    dip = triu(dip,1) + triu(dip,1)';
-    Hdips{j} = getHdip(N, dim, x, y, z, dip);
-end
+%  Hdips = cell(couplingsCount,1);
+%  % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
+%  for j=1:couplingsCount
+%      dip = abs(randn(N));
+%      dip = triu(dip,1) + triu(dip,1)';
+%      Hdips{j} = getHdip(N, dim, x, y, z, dip);
+%  end
 
 %% Iterate over different parameter values to see how term magnitude changes
 
@@ -97,9 +110,16 @@ raw_DfTS = zeros(length(testVars),couplingsCount);
 results_fTS = zeros(length(testVars),1);
 results_DfTS = zeros(length(testVars),1);
 
+raw_f2Only = zeros(length(testVars),couplingsCount);
+f2Only= zeros(length(testVars),1);
+
+raw_h02_closeness = zeros(length(testVars),couplingsCount);
+h02_closeness= zeros(length(testVars),1);
 
 
 for d=1:length(testVars)
+    
+    % Configure Test Variable and Test Sequence
     
     if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
         tau = pulse + d*(testValueMax/testValueCount); % ADJUST FOR TEST VAR 
@@ -110,19 +130,23 @@ for d=1:length(testVars)
     elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')||strcmp(testVarName,'coupling_lo')
         coupling = d*(testValueMax/testValueCount);
         testVars(d)=coupling;
+    elseif strcmp(testVarName,'Overrotations')||strcmp(testVarName,'overrotations')
+        overRotation = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
+        rotationError = 1+overRotation;
+        testVars(d) = overRotation;
     end
   
     sequence = getSequence(sequenceName);
         
+    for editPulse = 1:length(sequence.Pulses)
+        sequence.Pulses{editPulse}=sequence.Pulses{editPulse}*rotationError;
+    end
+    
     Pulses = sequence.Pulses;
-    Taus = tau * sequence.Taus;
-    
-    %end pulse-length corrections to Taus - - - - 
-    
+    Taus = tau * sequence.Taus;        
     tCyc = sum(Taus);
-    
-    loop_convs = zeros(couplingsCount); % check for convergence of Magnus expansion
-    
+        
+
     for c=1:couplingsCount
         
         
@@ -208,7 +232,7 @@ for d=1:length(testVars)
 %         H3 = (-1/(12*1i*tCyc))*H3;
 %         h3 = matOrder(H3)/hsys;
 
-        % Calculate the 4th term of the Magnus Expansion
+%        Calculate the 4th term of the Magnus Expansion
 %         H4 = zeros(dim,dim);
 %         for mm=0:length(Pulses)
 %             for m=0:mm
@@ -279,6 +303,8 @@ for d=1:length(testVars)
 
         U0 = expm(-1i*H0*2*pi*tCyc);
         U2 = expm(-1i*(H0+H1+H2)*2*pi*tCyc);
+        U2Only = expm(-1i*H2*2*pi*tCyc);
+%        U4Only = expm(-1i*H4*2*pi*tCyc);
 %        U4 = expm(-1i*(H0+H1+H2+H3+H4)*2*pi*tCyc);
 
         raw_f0(d,c) = metric(testUnitary, U0, N);
@@ -292,7 +318,10 @@ for d=1:length(testVars)
         raw_fTS(d,c) = metric(testUnitary,speye(dim,dim),N);
         raw_DfTS(d,c) = metric(deltaUnitary,speye(dim,dim),N);
 
-        loop_convs(c) = specnorm(Hsys)*tCyc;
+        raw_f2Only(d,c) = metric(testUnitary,U2Only,N);
+        %f4Only(d) = metric(testUnitary,U4Only,N);
+        
+        raw_h02_closeness(d,c) = metric(U0,U2Only,N);
     end
     
     results_h0(d)=mean(raw_results_h0(d,:));
@@ -312,16 +341,16 @@ for d=1:length(testVars)
     %time suspension fidelities
     results_fTS(d)=mean(raw_fTS(d,:));
     results_DfTS(d)=mean(raw_DfTS(d,:));
-
-    convs(d) = max(loop_convs(c));
-
-    d
+    
+    f2Only(d)=mean(raw_f2Only(d,:));
+    h02_closeness(d)=mean(raw_h02_closeness(d,:));
+    d % progress tracker
 end
 
 
 %% Save Result Output
-%fileDescriptor = strcat(sequenceName,'_',testVarName,'_PC_magnus_results_AND_fidelities_',date,'.mat');
-%save(fileDescriptor, 'sequenceName','results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f0','results_f2','results_f4','results_Df0','results_Df2','results_Df4','pulse')
+fileDescriptor = strcat(sequenceName,'_',testVarName,'_PC_magnus_results_AND_fidelities_',date,'.mat');
+%save(fileDescriptor, 'sequenceName','results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f0','results_f2','results_f4','results_Df0','results_Df2','results_Df4','pulse','results_fTS','results_DfTS','Hdips')
 
 %% FUNCTION DEFINITIONS
 function ct = comm(A,B) % calculates the commutator of a pair of matrices
@@ -450,6 +479,11 @@ function sequence = getSequence(sequenceName)
     elseif strcmp(sequenceName,'WHHWHH')
         sequence.Pulses = {X, -Y, Y, -X, X, -Y, Y, -X};
         sequence.Taus = [1 1 2 1 1 1 1 2 1 1];
+        
+    elseif strcmp(sequenceName,'ML10')
+        sequence.Pulses = {X,X,Y,X,X,-X,-X,-Y,-X,-X};
+        sequence.Taus = [1 1 1 1 1 2 1 1 1 1 1];
+        
     end
 end
 
@@ -467,7 +501,7 @@ end
 
     
 function testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1)
-    global dim 
+    global dim getNextUsM
     
     UtauCell = {speye(dim,dim),expm(-1i*Hsys*2*pi*(tau-pulse)), expm(-1i*Hsys*2*pi*(2*tau-pulse))};
         
@@ -476,7 +510,7 @@ function testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1)
     
     for p=1:length(sequence.Pulses)
         Utau = UtauCell{sequence.Taus(p)+1};
-        nextUs = getNextUs(sequence,Hsys,pulse,f1,p);
+        nextUs = getNextUsM(sequence,Hsys,pulse,f1,p);
         nextU = nextUs{1};
         nextUD = nextUs{2};
         testUnitary = nextU * Utau * testUnitary;
