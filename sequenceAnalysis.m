@@ -18,12 +18,12 @@ global dim pulse f1 Pulses X Y Z getNextUsM
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48,
 %    AS10M, AS10E, WHHWHH, ML10, WPW9-2Cycle
 
-%sequenceName = 'WHH' ;  % select sequence to test over.
-%testVarName = 'Tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
+sequenceName = 'WHH' ;  % select sequence to test over.
+testVarName = 'Tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
 
 
 % Control Parameters
-%testValueCount = 40;
+testValueCount = 40;
 couplingsCount = 6; % how many different coupling matrices to average over
 
 N = 4;
@@ -44,7 +44,7 @@ rotationError = 1+overRotation; %1 is a perfect pulse
 if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
     testValueMax = 10e-6;
 elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')
-    testValueMax = 5000;
+    testValueMax = 1000;
 elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')
     testValueMax = 50000;
 elseif strcmp(testVarName,'coupling_lo')
@@ -54,7 +54,7 @@ elseif strcmp(testVarName,'Overrotations')||strcmp(testVarName,'overrotations')
 elseif strcmp(testVarName,'phaseTrans')
     testValueMax = 0.15;
 elseif strcmp(testVarName,'delta_lo')
-    testValueMax = 400
+    testValueMax = 400;
 end
 
 % initvars, initCollectiveObs;
@@ -76,13 +76,13 @@ getNextUsM = memoize(@getNextUs); % used later but needs to be defined here
 
 %% Initialize Hamiltonians (modified code)
 
- Hdips = cell(couplingsCount,1);
- % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
- for j=1:couplingsCount
-     dip = abs(randn(N));
-     dip = triu(dip,1) + triu(dip,1)';
-     Hdips{j} = getHdip(N, dim, x, y, z, dip);
- end
+%  Hdips = cell(couplingsCount,1);
+%  % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
+%  for j=1:couplingsCount
+%      dip = abs(randn(N));
+%      dip = triu(dip,1) + triu(dip,1)';
+%      Hdips{j} = getHdip(N, dim, x, y, z, dip);
+%  end
 
 %% Iterate over different parameter values to see how term magnitude changes
 
@@ -136,9 +136,9 @@ for d=1:length(testVars)
     % Configure Test Variable and Test Sequence
     
     if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
-        tau = pulse + d*(testValueMax/testValueCount); % ADJUST FOR TEST VAR 
-        testVars(d)=tau; % ADJUST FOR TEST VAR
-    elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')
+        tau = pulse + d*(testValueMax/testValueCount);
+        testVars(d)=tau;
+    elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')||strcmp(testVarname,'delta_lo')
         Delta = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
         testVars(d)=Delta;
     elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')||strcmp(testVarName,'coupling_lo')
@@ -148,6 +148,9 @@ for d=1:length(testVars)
         overRotation = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
         rotationError = 1+overRotation;
         testVars(d) = overRotation;
+    elseif strcmp(testVarName,'phaseTrans')
+        phaseTrans = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
+        testVars(d) = phaseTrans;
     end
   
     sequence = getSequence(sequenceName);
