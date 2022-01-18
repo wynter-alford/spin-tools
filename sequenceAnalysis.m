@@ -1,10 +1,13 @@
 %% sequenceAnalysis.m
-% For a given pulse sequence, does the following:
-%    - Calculates the first five (up to fourth order) terms of the magnus
-%    expansion for that sequence
+% Wynter Alford
+% January 2022
 %
-%    - Calculates the fidelity of that sequence against H=H0, H=0,
-%    H=H0+H1+H2, and for shorter sequences H=H0+H1+H2+H3+H4
+% For a given pulse sequence, does the following:
+%    - Calculates the first [maxTerm] terms of the magnus
+%    expansion for that sequence using the recursive method
+%
+%    - Calculates the fidelity of that sequence against H=0, H=H0,
+%    and H=H0+H1+... up to the highest order term chosen
 %
 %    - Calculates fidelity when using experimental or instantaneous pulses
 %
@@ -18,23 +21,23 @@ global dim pulse f1 Pulses X Y Z getNextUsM
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48,
 %    AS10M, AS10E, WHHWHH, ML10, WPW9-2Cycle
 
-sequenceName = 'WHH' ;  % select sequence to test over.
-testVarName = 'Tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo)
-
+sequenceName = 'MREV8' ;  % select sequence to test over.
+testVarName = 'coupling_lo'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo, phaseTrans, delta_lo, 'overrot_hi')
+maxTerm = 16; % highest Magnus series term to compute (can do 8+ for WHH; no higher than 4 for 48 pulses)
 
 % Control Parameters
-testValueCount = 40;
-couplingsCount = 6; % how many different coupling matrices to average over
+testValueCount = 1;
+couplingsCount = 1; % how many different coupling matrices to average over
 
 N = 4;
 pulse = 1.4e-6;
-tau = 4.4e-6;  % delay spacing
-coupling = 2000;
-Delta = 0;
+tau = 5.4e-6;  % delay spacing
+coupling = 5000;
+Delta = 500;
 overRotation = 0; %0 is a perfect pulse, +/- 0.01 is a 1% over/under rotation, etc.
 phaseTrans = 0; %0 is no phase transient, 1 is a pi/2 phase transient
 
-%Derived parameters
+% Derived parameters
 dim = 2^N;
 f1 = 1/4/pulse; %Can adjust f1 and w1 by changing 'pulse' variable
 w1 = 2*pi*f1;
@@ -55,6 +58,8 @@ elseif strcmp(testVarName,'phaseTrans')
     testValueMax = 0.15;
 elseif strcmp(testVarName,'delta_lo')
     testValueMax = 400;
+elseif strcmp(testVarName,'overrot_hi')
+    testValueMax = 0.2;
 end
 
 % initvars, initCollectiveObs;
@@ -74,8 +79,8 @@ end
 getNextUsM = memoize(@getNextUs); % used later but needs to be defined here
 
 
-%% Initialize Hamiltonians (modified code)
-
+% %% Initialize Hamiltonians (modified code)
+% 
 %  Hdips = cell(couplingsCount,1);
 %  % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
 %  for j=1:couplingsCount
@@ -88,48 +93,27 @@ getNextUsM = memoize(@getNextUs); % used later but needs to be defined here
 
 testVars = zeros(testValueCount,1);
 
-results_h0 = zeros(length(testVars),1);
-results_h1 = zeros(length(testVars),1);
-results_h2 = zeros(length(testVars),1);
-results_h3 = zeros(length(testVars),1);
-results_h4 = zeros(length(testVars),1);
+% Size of Magnus Terms
+results_hsizes = zeros(length(testVars),maxTerm+1);
+raw_hsizes = zeros(length(testVars),couplingsCount,maxTerm+1);
 
-results_f0 = zeros(length(testVars),1);
-results_f2 = zeros(length(testVars),1);
-results_f4 = zeros(length(testVars),1);
+% Hn Fidelities
+results_f = zeros(length(testVars),maxTerm+1);
+results_Df = zeros(length(testVars),maxTerm+1);
+raw_f = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_Df = zeros(length(testVars),couplingsCount,maxTerm+1);
 
-results_Df0 = zeros(length(testVars),1);
-results_Df2 = zeros(length(testVars),1);
-results_Df4 = zeros(length(testVars),1);
-
-raw_results_h0 = zeros(length(testVars),couplingsCount);
-raw_results_h1 = zeros(length(testVars),couplingsCount);
-raw_results_h2 = zeros(length(testVars),couplingsCount);
-raw_results_h3 = zeros(length(testVars),couplingsCount);
-raw_results_h4 = zeros(length(testVars),couplingsCount);
-
-raw_f0 = zeros(length(testVars),couplingsCount);
-raw_f2 = zeros(length(testVars),couplingsCount);
-raw_f4 = zeros(length(testVars),couplingsCount);
-
-raw_Df0 = zeros(length(testVars),couplingsCount);
-raw_Df2 = zeros(length(testVars),couplingsCount);
-raw_Df4 = zeros(length(testVars),couplingsCount);
-
+% Time-Suspension Fidelities
+results_fTS = zeros(length(testVars),1);
+results_DfTS = zeros(length(testVars),1);
 raw_fTS = zeros(length(testVars),couplingsCount);
 raw_DfTS = zeros(length(testVars),couplingsCount);
 
-results_fTS = zeros(length(testVars),1);
-results_DfTS = zeros(length(testVars),1);
-
-raw_f2Only = zeros(length(testVars),couplingsCount);
-f2Only= zeros(length(testVars),1);
-raw_f4Only = zeros(length(testVars),couplingsCount);
-f4Only= zeros(length(testVars),1);
-
-raw_h02_closeness = zeros(length(testVars),couplingsCount);
-h02_closeness= zeros(length(testVars),1);
-
+% Commutation with Other Terms
+results_C0 = zeros(length(testVars),maxTerm+1);
+results_CS = zeros(length(testVars),maxTerm+1);
+raw_C = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_CS = zeros(length(testVars),couplingsCount,maxTerm+1);
 
 for d=1:length(testVars)
     
@@ -138,13 +122,13 @@ for d=1:length(testVars)
     if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
         tau = pulse + d*(testValueMax/testValueCount);
         testVars(d)=tau;
-    elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')||strcmp(testVarname,'delta_lo')
+    elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')||strcmp(testVarName,'delta_lo')
         Delta = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
         testVars(d)=Delta;
     elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')||strcmp(testVarName,'coupling_lo')
         coupling = d*(testValueMax/testValueCount);
         testVars(d)=coupling;
-    elseif strcmp(testVarName,'Overrotations')||strcmp(testVarName,'overrotations')
+    elseif strcmp(testVarName,'Overrotations')||strcmp(testVarName,'overrotations')||strcmp(testVarName,'overrot_hi')
         overRotation = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
         rotationError = 1+overRotation;
         testVars(d) = overRotation;
@@ -154,16 +138,16 @@ for d=1:length(testVars)
     end
   
     sequence = getSequence(sequenceName);
-        
+    
+    % Add overrotations and phase transients
     for editPulse = 1:length(sequence.Pulses)
-        sequence.Pulses{editPulse}=sequence.Pulses{editPulse}*rotationError;
-        sequence.Pulses{editPulse}=transient(sequence.Pulses{editPulse},phaseTrans);
+        sequence.Pulses{editPulse}=pulseError(sequence.Pulses{editPulse},rotationError,phaseTrans);
     end
     
     Pulses = sequence.Pulses;
     Taus = tau * sequence.Taus;        
     tCyc = sum(Taus);
-        
+    
 
     for c=1:couplingsCount
         
@@ -175,215 +159,84 @@ for d=1:length(testVars)
         
         toggledHsys = {};
         for p = 0:length(Pulses)
-            toggledHsys{p+1} = getURF(p)'*Hsys*getURF(p);
+            toggledHsys{p+1} = getURF(p)'*Hsys*getURF(p); %#ok<*SAGROW> 
         end
-
-        %calcMagnus
-        %Magnus Calculation is done here ------------------------------------
         
-        %Calculate 0th order Magnus term
-        H0 = zeros(dim,dim);
-        for k=0:length(Pulses)
-            H0 = H0 + (Taus(k+1))*toggledHsys{k+1};
-        end
-
-        H0 = (1/tCyc)*H0;
-        h0 = matOrder(H0)/hsys;
-
-
-        %Calculate 1st order Magnus term
-        H1 = zeros(dim,dim);
-        for k=1:length(Pulses)
-            for j=0:k-1
-                Hk = toggledHsys{k+1};
-                Hj = toggledHsys{j+1};
-                H1 = H1 + comm(Hk,Hj)*Taus(k+1)*Taus(j+1);
-            end
-        end
-
-        H1 = (1/(2*1i*tCyc))*H1;
-        h1 = matOrder(H1)/hsys;
-
-        %Calculate 2nd order Magnus term
-        H2 = zeros(dim,dim);
-        for l=0:length(Pulses)
-            for k=0:l
-                for j=0:k
-                    Hl = toggledHsys{l+1};
-                    Hk = toggledHsys{k+1};
-                    Hj = toggledHsys{j+1};
-
-                    Hterm = comm(Hl,comm(Hk,Hj))+comm(comm(Hl,Hk),Hj);
-                    H2 = H2 + Hterm*Taus(l+1)*Taus(k+1)*Taus(j+1);
-                end
-            end
-        end
-
-        H2 = (-1/(6*tCyc))*H2;
-        h2 = matOrder(H2)/hsys;
-
-        if length(sequence.Pulses) < 24
-        % Calculate 3rd order Magnus term
-            H3 = zeros(dim,dim);
-            for m=0:length(Pulses)
-                for l=0:m
-                    for k=0:l
-                        for j=0:k
-                            Hm = toggledHsys{m+1};
-                            Hl = toggledHsys{l+1};
-                            Hk = toggledHsys{k+1};
-                            Hj = toggledHsys{j+1};
-
-                            term1 = comm(comm(comm(Hm,Hl),Hk),Hj);
-                            term2 = comm(Hm,comm(comm(Hl,Hk),Hj));
-                            term3 = comm(Hm,comm(Hl,comm(Hk,Hj)));
-                            term4 = comm(Hl,comm(Hk,comm(Hj,Hm)));
-
-                            Hterm = term1+term2+term3+term4;
-                            tauProd = Taus(m+1)*Taus(l+1)*Taus(k+1)*Taus(j+1);
-
-                            H3 = H3 + Hterm*tauProd;
-                        end
-                    end
-                end
-            end
-
-            H3 = (-1/(12*1i*tCyc))*H3;
-            h3 = matOrder(H3)/hsys;
-
-           Calculate the 4th term of the Magnus Expansion
-            H4 = zeros(dim,dim);
-            for mm=0:length(Pulses)
-                for m=0:mm
-                    for l=0:m
-                        for k=0:l
-                            for j=0:k
-                                % Express Hsys(t) in the interaction frame
-                                Hmm = toggledHsys{mm+1};
-                                Hm = toggledHsys{m+1};
-                                Hl = toggledHsys{l+1};
-                                Hk = toggledHsys{k+1};
-                                Hj = toggledHsys{j+1};
-
-                                % Calculate commutators
-                                term1 = (-1/30)*comm(Hmm,comm(Hm,comm(Hl,comm(Hk,Hj))));
-                                term2 = (2/15)*comm(Hj,comm(Hmm,comm(Hm,comm(Hk,Hl))));
-                                term3 = (1/15)*comm(comm(Hmm,Hj),comm(Hm,comm(Hk,Hl)));
-                                term4 = (1/15)*comm(comm(Hm,Hj),comm(Hmm,comm(Hk,Hl)));
-                                term5 = (-1/60)*comm(comm(Hk,Hl),comm(Hmm,comm(Hm,Hj)));
-                                term6 = (1/15)*comm(comm(Hl,Hj),comm(Hmm,comm(Hk,Hm)));
-                                term7 = (-1/60)*comm(comm(Hk,Hm),comm(Hmm,comm(Hl,Hj)));
-                                term8 = (-1/60)*comm(comm(Hk,Hmm),comm(Hm,comm(Hl,Hj)));
-                                term9 = (-1/60)*comm(comm(Hl,Hm),comm(Hmm,comm(Hk,Hj)));
-                                term10 = (-1/60)*comm(comm(Hl,Hm),comm(Hj,comm(Hk,Hmm)));
-                                term11 = (-1/60)*comm(comm(Hmm,Hj),comm(Hl,comm(Hk,Hm)));
-                                term12 = (-1/60)*comm(comm(Hm,Hj),comm(Hl,comm(Hk,Hmm)));
-                                term13 = (-1/60)*comm(comm(Hl,Hmm),comm(Hm,comm(Hk,Hj)));
-                                term14 = (-1/60)*comm(comm(Hl,Hmm),comm(Hj,comm(Hk,Hm)));
-                                term15 = (-1/30)*comm(Hj,comm(Hm,comm(Hl,comm(Hk,Hmm))));
-                                term16 = (-1/60)*comm(comm(Hm,Hmm),comm(Hj,comm(Hk,Hl)));
-                                term17 = (-1/60)*comm(comm(Hk,Hl),comm(Hj,comm(Hm,Hmm)));
-                                term18 = (-1/60)*comm(comm(Hk,Hm),comm(Hj,comm(Hl,Hmm)));
-                                term19 = (-1/60)*comm(comm(Hk,Hj),comm(Hm,comm(Hl,Hmm)));
-                                term20 = (-1/60)*comm(comm(Hm,Hmm),comm(Hl,comm(Hk,Hj)));
-                                term21 = (-1/60)*comm(comm(Hl,Hj),comm(Hm,comm(Hk,Hmm)));
-                                term22 = (-1/30)*comm(Hj,comm(Hmm,comm(Hl,comm(Hk,Hm))));
-
-                                % Add commutators
-                                Hterm = term1+term2+term3+term4+term5+term6+term7+term8+term9+term10+term11+term12+term13+term14+term15+term16+term17+term18+term19+term20+term21+term22;
-                                tauProd = Taus(mm+1)*Taus(m+1)*Taus(l+1)*Taus(k+1)*Taus(j+1);
-
-                                H4 = H4 + Hterm*tauProd;
-                            end
-                        end
-                    end
-                end
-            end
-
-            H4 = (1/tCyc)*H4;
-            h4 = matOrder(H4)/hsys;
+        %Calculate Magnus terms
+        knownOmegas = {};
+        length(knownOmegas)
+        knownPs = {};
+        knownQs = {};
         
-        else
-            H3 = 0;
-            H4 = 0;
-        end
-
-
-        % Magnus Calculation ends here ---------------------------------------
-
-
-        raw_results_h0(d,c) = h0;
-        raw_results_h1(d,c) = h1;
-        raw_results_h2(d,c) = h2;
-%        raw_results_h3(d,c) = h3;
-%        raw_results_h4(d,c) = h4;
-        
-       
-        % FIDELITY CALCULATION HERE
-        % get experimental unitary
+        MagnusTerms = {};
+        trunc = zeros(dim,dim);
+        for mt=1:maxTerm+1
+            length(knownOmegas)
+            MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus);
+            trunc = trunc + MagnusTerms{mt};
+            
+            raw_hsizes(d,c,mt) = matOrder(MagnusTerms{mt});
+            raw_C0(d,c,mt) = matOrder(comm(MagnusTerms{mt},MagnusTerms{1}));
+            raw_CS(d,c,mt) = matOrder(comm(MagnusTerms{mt},trunc));
+        end       
+                
+        % obtain experimental unitary
         testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1);
-        testUnitary = testUnitaries{1};
+        expUnitary = testUnitaries{1};
         deltaUnitary = testUnitaries{2};
 
-        U0 = expm(-1i*H0*2*pi*tCyc);
-        U2 = expm(-1i*(H0+H1+H2)*2*pi*tCyc);
-        U2Only = expm(-1i*H2*2*pi*tCyc);
-%        U4Only = expm(-1i*H4*2*pi*tCyc);
-        U4 = expm(-1i*(H0+H1+H2+H3+H4)*2*pi*tCyc);
-
-        raw_f0(d,c) = metric(testUnitary, U0, N);
-        raw_f2(d,c) = metric(testUnitary, U2, N);
-        raw_f4(d,c) = metric(testUnitary, U4, N);
-
-        raw_Df0(d,c) = metric(deltaUnitary, U0, N);
-        raw_Df2(d,c) = metric(deltaUnitary, U2, N);
-        raw_Df4(d,c) = metric(deltaUnitary, U4, N); % "fully corrected" fidelity
-
-        raw_fTS(d,c) = metric(testUnitary,speye(dim,dim),N);
-        raw_DfTS(d,c) = metric(deltaUnitary,speye(dim,dim),N);
-
-        raw_f2Only(d,c) = metric(testUnitary,U2Only,N);
-        raw_f4Only(d,c) = metric(testUnitary,U4Only,N);
+        % obtain theoretical unitaries from AHT and compute Fidelity
+        AHTUnitaries = {};
+        sumAH = sparse(dim,dim);
         
-        raw_h02_closeness(d,c) = metric(U0,U2Only,N);
+        for au=1:maxTerm+1
+            sumAH = sumAH + MagnusTerms{au};
+            AHTUnitaries{au} = expm(-1i*sumAH*2*pi*tCyc);
+            raw_f(d,c,au)=metric(expUnitary, AHTUnitaries{au}, N);
+            raw_Df(d,c,au) = metric(deltaUnitary, AHTUnitaries{au}, N);
+        end
+        
+        % Time-suspension fidelities
+        raw_fTS(d,c) = metric(expUnitary,speye(dim,dim),N);
+        raw_DfTS(d,c) = metric(deltaUnitary,speye(dim,dim),N); 
+
     end
     
-    % Magnus term sizes
-    results_h0(d)=mean(raw_results_h0(d,:));
-    results_h1(d)=mean(raw_results_h1(d,:));
-    results_h2(d)=mean(raw_results_h2(d,:));
-    results_h3(d)=mean(raw_results_h3(d,:));
-    results_h4(d)=mean(raw_results_h4(d,:));
-    
-    % Fidelity using experimental pulses and 0 to 4 terms
-    results_f0(d)=mean(raw_f0(d,:));
-    results_f2(d)=mean(raw_f2(d,:));
-    results_f4(d)=mean(raw_f4(d,:));
+    % Average Raw Results   
+    for mt = 1:maxTerm+1
+        results_hsizes(d,mt)=mean(raw_hsizes(d,:,mt));
+        results_f(d,mt)=mean(raw_f(d,:,mt));
+        results_Df(d,mt)=mean(raw_Df(d,:,mt)); 
+        results_C0(d,mt)=mean(raw_C0(d,:,mt));
+        results_CS(d,mt)=mean(raw_CS(d,:,mt));
+    end
 
-    % Fidelity using instantaneous pulses and 0 to 4 terms
-    results_Df0(d)=mean(raw_Df0(d,:));
-    results_Df2(d)=mean(raw_Df0(d,:));
-    results_Df4(d)=mean(raw_Df0(d,:));
-
-    %time suspension fidelities
     results_fTS(d)=mean(raw_fTS(d,:));
     results_DfTS(d)=mean(raw_DfTS(d,:));
 
-    % fidelities using only a single higher order term
-    f2Only(d)=mean(raw_f2Only(d,:));
-    f4Only(d)=mean(raw_f4Only(d,:));
-    
-    % Other metrics of interest
-    h02_closeness(d)=mean(raw_h02_closeness(d,:));
-    
     % progress tracker for my impatient self
-    [testVarName sequenceName d] 
+    strcat(testVarName,'_',sequenceName,'_',string(d))
 end
 
 
 %% Save Result Output
-fileDescriptor = strcat(sequenceName,'_',testVarName,'_02D-fids_',date,'.mat');
-save(fileDescriptor, 'sequenceName','results_h0', 'results_h1', 'results_h2', 'results_h3', 'results_h4', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f0','results_f2','results_f4','results_Df0','results_Df2','results_Df4','pulse','results_fTS','results_DfTS','Hdips')
+
+fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,string(coupling),'|',string(Delta),'_REC_',string(maxTerm),'.mat');
+save(fileDescriptor, 'sequenceName','results_hsizes', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f','results_Df','pulse','results_fTS','results_DfTS','Hdips','maxTerm','tCyc','results_C0','results_CS')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 %% FUNCTION DEFINITIONS
 function ct = comm(A,B) % calculates the commutator of a pair of matrices
@@ -412,51 +265,7 @@ function URF = getURF(frame)
     end
 end
 
-
-% The functions below are not written by me (Ben Alford) ----------------
-
-%function PO=mykron(varargin)
-% This little function allows you to pass all of
-% the product operators in at once and it goes through
-% and makes the right answer.  It is equivalent to
-% kron(kron(kron(x,x),x),x)....
-% written April 29th 2000, -Evan Fortunato
-function PO=mykron(varargin)
-
-    if length(varargin) < 1
-        error('Please enter atleast 1 Product Operator!');
-    elseif length(varargin) == 1
-        PO = varargin{1};
-    else
-        PO = varargin{1};
-        for j=2:length(varargin)
-            PO=kron(PO, varargin{j});
-        end
-    end
-end
-
-function Hdip = getHdip(N, dim, x, y, z, a)
-
-    % N: number of spins
-    % x/y/z: Pauli matrices
-    % a: dipolar interaction strengths (NxN symmetric matrix)
-
-    Hdip = sparse(dim, dim);
-
-    for k=1:N
-        for h=k+1:N
-            % Hdip = a_{kh} (3Z - X - Y)
-            Hdip=Hdip+a(k,h)*(2*mykron(speye(2^(k-1)),z,speye(2^(h-k-1)),z,speye(2^(N-h)))-... 
-                mykron(speye(2^(k-1)),x,speye(2^(h-k-1)),x,speye(2^(N-h)))-...
-                mykron(speye(2^(k-1)),y,speye(2^(h-k-1)),y,speye(2^(N-h)))) ;             
-        end
-    end
-
-end
-
-% end functions not written by me ------------------------------
-
-% SEQUENCES (new code)
+% SEQUENCES
 function sequence = getSequence(sequenceName)
     global X Y
     %WAHUHA
@@ -573,16 +382,150 @@ end
 
 % which phase transient to associate with which pulse 
 % (note that alpha canbe negative)
-function trP = transient(pulseIn,alpha)  
+function trP = pulseError(pulseIn,roterror,trans)  
+    global X Y
+
     if pulseIn == X
-        trP = alpha*Y;
+        trP = roterror*pulseIn+trans*Y;
     elseif pulseIn == Y
-        trP = alpha*(-X);
+        trP = roterror*pulseIn+trans*(-X);
     elseif pulseIn == -X
-        trP = alpha*(-Y);
+        trP = roterror*pulseIn+trans*(-Y);
     elseif pulseIn == -Y
-        trP = alpha*X;
+        trP = roterror*pulseIn+trans*X;
     else
-        trP = pulseIn;
+        trP = roterror*pulseIn; % transients not yet implemented for pi pulses
     end
 end
+
+% MAGNUS RECURSION FUNCTIONS
+% Omega calculates the actual term by calling Q and P. P does the actual
+% computation work while the others are just there for the recursive
+% structure.
+
+function omega = Omega(n,toggledHsys,Taus)
+    global knownOmegas 
+    % Check whether this term has already been computed
+    if length(knownOmegas)>=n && ~isempty(knownOmegas{n})
+        omega=knownOmegas{n};
+    
+    % if it hasn't been, then compute it
+    else
+        omega = P(n,toggledHsys,Taus);
+        if n>1
+            for k=2:n
+                omega = omega - (1/factorial(k))*Q(n,k,toggledHsys,Taus);
+            end
+        end
+        knownOmegas{n}=omega;
+    end
+end
+
+function pn = P(n,toggledHsys,Taus)
+    global dim knownPs %#ok<*GVMIS> 
+    % Check whether this term has already been computed
+    if length(knownPs)>=n && ~isempty(knownPs{n})
+        pn = knownPs{n};
+    
+    % if it hasn't been, then compute it        
+    else
+        pn = zeros(dim,dim);
+        times = ones(n,1);
+        maxTime = length(toggledHsys);
+        k = n;
+
+        % This while loop enacts n summations and is equivalent to:
+        % "for i1=1:N, for i2=1:i1 ... for i(n)=1:i(n-1), do stuff"
+        while times(1)<=maxTime
+            times'
+            if k==1||times(k)<times(k-1)
+                hprod = 1;
+                for hnum = 1:n
+                    % multiply -iH(t1)*...*-iH(tn)
+                    hprod = hprod*(-1i)*toggledHsys{times(hnum)}*Taus(times(hnum));
+                end
+                
+                pn = pn+hprod/indexfactor(times);
+
+                times(k) = times(k)+1;
+
+                if k<length(times)
+                    times(k+1:n)=1;
+                end
+                k=n;
+            else
+                k = k-1;
+            end
+        end
+        knownPs{n}=pn;
+    end
+end
+
+function qnk = Q(n,k,toggledHsys,Taus)
+    global knownQs %#ok<*GVMIS> 
+
+    % Check whether this term has already been computed
+    if length(knownQs)>=n && length(knownQs{n})>=k && ~isempty(knownQs{n}{k})
+        qnk = knownQs{n}{k};
+        
+    % if it hasn't been, then compute it        
+    else      
+        if k==1
+            qnk = Omega(n,toggledHsys,Taus);
+            
+        elseif k==n
+            qnk = (Omega(1,toggledHsys,Taus))^n;
+            
+        else
+            qnk = 0;
+            for m=1:(n-k+1) 
+                qnk = qnk + Omega(m,toggledHsys,Taus)*Q(n-m,k-1,toggledHsys,Taus);
+            end            
+        end
+        
+        knownQs{n}{k}=qnk;
+    end
+end
+
+% The functions below are not written by me (Ben Alford) ----------------
+
+%function PO=mykron(varargin)
+% This little function allows you to pass all of
+% the product operators in at once and it goes through
+% and makes the right answer.  It is equivalent to
+% kron(kron(kron(x,x),x),x)....
+% written April 29th 2000, -Evan Fortunato
+function PO=mykron(varargin)
+
+    if length(varargin) < 1
+        error('Please enter atleast 1 Product Operator!');
+    elseif length(varargin) == 1
+        PO = varargin{1};
+    else
+        PO = varargin{1};
+        for j=2:length(varargin)
+            PO=kron(PO, varargin{j});
+        end
+    end
+end
+
+function Hdip = getHdip(N, dim, x, y, z, a)
+
+    % N: number of spins
+    % x/y/z: Pauli matrices
+    % a: dipolar interaction strengths (NxN symmetric matrix)
+
+    Hdip = sparse(dim, dim);
+
+    for k=1:N
+        for h=k+1:N
+            % Hdip = a_{kh} (3Z - X - Y)
+            Hdip=Hdip+a(k,h)*(2*mykron(speye(2^(k-1)),z,speye(2^(h-k-1)),z,speye(2^(N-h)))-... 
+                mykron(speye(2^(k-1)),x,speye(2^(h-k-1)),x,speye(2^(N-h)))-...
+                mykron(speye(2^(k-1)),y,speye(2^(h-k-1)),y,speye(2^(N-h)))) ;             
+        end
+    end
+
+end
+
+% end functions not written by me ------------------------------
