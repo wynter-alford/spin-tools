@@ -1,5 +1,5 @@
 function testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1)
-    global dim getNextUsM
+    global dim 
     
     UtauCell = {speye(dim,dim),expm(-1i*Hsys*2*pi*(tau-pulse)), expm(-1i*Hsys*2*pi*(2*tau-pulse))};
         
@@ -8,7 +8,7 @@ function testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1)
     
     for p=1:length(sequence.Pulses)
         Utau = UtauCell{sequence.Taus(p)+1};
-        nextUs = getNextUsM(sequence,Hsys,pulse,f1,p);
+        nextUs = getNextUs(sequence,Hsys,pulse,f1,p);
         nextU = nextUs{1};
         nextUD = nextUs{2};
         testUnitary = nextU * Utau * testUnitary;

@@ -1,7 +1,4 @@
 %% sequenceAnalysis.m
-% Wynter Alford
-% January 2022
-%
 % For a given pulse sequence, does the following:
 %    - Calculates the first [maxTerm] terms of the magnus
 %    expansion for that sequence using the recursive method
@@ -15,67 +12,9 @@
 %    offsets, tau spacing, pulse length, dipolar coupling strength,
 %    overrotations, and phase transients
 
-%% Control Parameters (change these)
+%% Setup
+global dim pulse f1 Pulses knownQs knownPs knownOmegas
 
-global dim pulse f1 Pulses knownOmegas knownQs knownPs
-
-% Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48,
-%    AS10M, AS10E, WHHWHH, ML10, WPW9-2Cycle, MG8
-
-sequenceName = 'YXX48' ;  % select sequence to test over.
-testVarName = 'tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo, phaseTrans, delta_lo, 'overrot_hi')
-varMaxMod = 1; % factor by which to multiply the default testVarMax
-maxTerm = 2; % highest Magnus series term to compute (can do 10+ for WHH; no higher than 4 for 48 pulses)
-
-% Control Parameters
-testValueCount = 30;
-couplingsCount = 4; % how many different coupling matrices to average over
-
-N = 4;
-pulse = 1.4e-6;
-tau = 7.4e-6;  % delay spacing
-coupling = 5000;
-Delta = 00;
-overRotation = 0; %0 is a perfect pulse, +/- 0.01 is a 1% over/under rotation, etc.
-phaseTrans = 0; %0 is no phase transient, 1 is a pi/2 phase transient
-
-%% Configuration
-
-% Derived parameters
-dim = 2^N;
-f1 = 1/4/pulse; %Can adjust f1 and w1 by changing 'pulse' variable
-w1 = 2*pi*f1;
-rotationError = 1+overRotation; %1 is a perfect pulse
-
-%Configure Test Variable
-testValueMax = getVarMax(testVarName,varMaxMod);
-
-initVars
-initCollectiveObs
-% % initvars, initCollectiveObs;
-% z=0.5*sparse([1 0; 0 -1]);
-% x=0.5*sparse( [ 0 1;1 0]); 
-% y=1i*0.5*sparse([0 -1;1 0]);
-% 
-% Z=sparse(dim,dim);
-% X=sparse(dim,dim);
-% Y=sparse(dim,dim);
-% for k=1:N
-%       Z = Z + mykron(speye(2^(k-1)),z,speye(2^(N-k)));
-%       X = X + mykron(speye(2^(k-1)),x,speye(2^(N-k)));
-%       Y = Y + mykron(speye(2^(k-1)),y,speye(2^(N-k)));
-% end
-
-% %% Initialize Hamiltonians (modified code)
-% 
-%  Hdips = cell(couplingsCount,1);
-%  % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
-%  for j=1:couplingsCount
-%      dip = abs(randn(N));
-%      dip = triu(dip,1) + triu(dip,1)';
-%      Hdips{j} = getHdip(N, dim, x, y, z, dip);
-%  end
-load('Standard_Dipole_Hamiltonians(4).mat','Hdips');
 
 %% Iterate over different parameter values to see how term magnitude changes
 
@@ -199,11 +138,11 @@ for d=1:length(testVars)
     results_DfTS(d)=mean(raw_DfTS(d,:));
 
     % progress tracker for my impatient self
-    strcat(testVarName,'_',sequenceName,'_',string(d))
+    strcat(string(udloop),'_(',string(superind),')_',sequenceName,'_',string(d))
 end
 
 
 %% Save Result Output
 
 fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,string(coupling),']',string(Delta),'_REC_',string(maxTerm),'.mat');
-save(fileDescriptor, 'sequenceName','results_hsizes', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f','results_Df','pulse','results_fTS','results_DfTS','Hdips','maxTerm','tCyc','results_C0','results_CS','coupling','Delta')
+save(fileDescriptor, 'sequenceName','results_hsizes', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f','results_Df','pulse','results_fTS','results_DfTS','Hdips','maxTerm','tCyc','results_C0','results_CS')

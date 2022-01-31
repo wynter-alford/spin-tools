@@ -5,7 +5,7 @@
 % for example usage.
 
 function URF = getURF(frame)
-    global Pulses dim
+    global dim Pulses
     
     if frame < 1
         URF = speye(dim,dim); %returns the identity if frame == 0
