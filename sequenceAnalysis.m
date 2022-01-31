@@ -23,8 +23,8 @@ global dim pulse f1 Pulses knownOmegas knownQs knownPs
 %    AS10M, AS10E, WHHWHH, ML10, WPW9-2Cycle, MG8
 
 sequenceName = 'YXX48' ;  % select sequence to test over.
-testVarName = 'tau'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo, phaseTrans, delta_lo, 'overrot_hi')
-varMaxMod = 1; % factor by which to multiply the default testVarMax
+testVarName = 'coupling_lo'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo, phaseTrans, delta_lo, 'overrot_hi')
+varMaxMod = 1.6; % factor by which to multiply the default testVarMax
 maxTerm = 2; % highest Magnus series term to compute (can do 10+ for WHH; no higher than 4 for 48 pulses)
 
 % Control Parameters
@@ -204,6 +204,11 @@ end
 
 
 %% Save Result Output
-
-fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,string(coupling),']',string(Delta),'_REC_',string(maxTerm),'.mat');
+its = num2str(tau*10^7);
+tauString = strcat(its(1),',',its(2));
+if strcmp(testVarName,'coupling')||strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling_lo')
+    fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,tauString,']',string(Delta),'_REC_',string(maxTerm),'.mat');
+elseif strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
+    fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,string(coupling),']',string(Delta),'_REC_',string(maxTerm),'.mat');
+end
 save(fileDescriptor, 'sequenceName','results_hsizes', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f','results_Df','pulse','results_fTS','results_DfTS','Hdips','maxTerm','tCyc','results_C0','results_CS','coupling','Delta')
