@@ -1,5 +1,5 @@
 # spin-tools
-Tools for measuring fidelity of a pulse sequence and calculating magnus expansion terms.  The main code is contained in *fullMagnusOneParam.m* while results are periodically updated and posted in *Magnus Tools.ipynb*
+Tools for measuring fidelity of a pulse sequence and calculating magnus expansion terms.  The main script is *sequenceAnalysis.m* which uses supporting functions found in the 'code' directory.
 
 ### sequenceAnalysis.m
 This is the main script used to generate results.  Contains code to calculate up to the 4th order term in the Magnus Expansion for a pulse sequence.  Calculates the fidelity of an experimental sequence relative to an expected theoretical unitary operator based on the zeroth, zeroth through second, and (when enabled) zeroth through fourth order terms.  A few other potentially interesting fidelities are also included.  Includes code to simulate a number of pulse sequences, and more can be added easily by modifying the "getSequence" function. Note that this script requires use of the functions found in the "code" directory in order to function.
