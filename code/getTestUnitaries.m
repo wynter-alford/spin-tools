@@ -1,9 +1,9 @@
 function testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1)
     global dim 
     
-    UtauCell = {speye(dim,dim),expm(-1i*Hsys*2*pi*(tau-pulse)), expm(-1i*Hsys*2*pi*(2*tau-pulse))};
-        
-    testUnitary = speye(dim,dim);
+    UtauCell = {speye(dim,dim),expm(-1i*Hsys*tau*2*pi), expm(-1i*Hsys*2*tau*2*pi)};    
+
+    testUnitary = speye(dim,dim); % WARNING: MAY NOT FUNCTION PROPERLY AT THIS TIME
     deltaUnitary = speye(dim,dim);
     
     for p=1:length(sequence.Pulses)
@@ -22,6 +22,8 @@ end
 
 function nextUs = getNextUs(sequence,Hsys,pulse,f1,p)
     nextU = expm(-1i*2*pi*(Hsys+f1*sequence.Pulses{p})*pulse);
-    nextUD = expm(-1i*Hsys*2*pi*pulse/2)*expm(-1i*pi*sequence.Pulses{p}/2)*expm(-1i*Hsys*2*pi*pulse/2);  
+    %nextUD = expm(-1i*Hsys*2*pi*pulse/2)*expm(-1i*pi*sequence.Pulses{p}/2)*expm(-1i*Hsys*2*pi*pulse/2);  
+    nextUD = expm(-1i*pi*sequence.Pulses{p}/2);
     nextUs = {nextU,nextUD};
 end
+

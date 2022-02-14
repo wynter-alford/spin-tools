@@ -9,7 +9,7 @@ function testValueMax = getVarMax(testVarName,rangeMod)
     elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')
         testValueMax = 50000;
     elseif strcmp(testVarName,'coupling_lo')
-        testValueMax = 5000;
+        testValueMax = 8000;
     elseif strcmp(testVarName,'Overrotations')||strcmp(testVarName,'overrotations')
         testValueMax = 0.03;
     elseif strcmp(testVarName,'phaseTrans')

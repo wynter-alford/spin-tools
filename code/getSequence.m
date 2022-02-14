@@ -68,5 +68,9 @@ function sequence = getSequence(sequenceName, X, Y)
     elseif strcmp(sequenceName,'MG8')
         sequence.Pulses = {X,Y,Y,X,X,Y,Y,X};
         sequence.Taus = [1 1 2 1 2 1 2 1 1];
+        
+    elseif strcmp(sequenceName,'I24')
+        sequence.Pulses = {X, Y, Y, X, -Y, -X, -Y, -X, Y, X, Y, X, -Y, -X, -X, -Y, -X, Y, -X, -Y, X, Y, -X, Y};
+        sequence.Taus = [1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1];
     end
 end

@@ -6,23 +6,21 @@ if strcmp(mode,'time')
     mt = 1;
     while ~done
         MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus);
-        trunc = trunc + MagnusTerms{mt};  
         raw_hsizes(d,c,mt) = matOrder(MagnusTerms{mt})/hsys;
-        raw_C0(d,c,mt) = matOrder(comm(MagnusTerms{mt},MagnusTerms{1}))/hsys;
-        raw_CS(d,c,mt) = matOrder(comm(MagnusTerms{mt},trunc))/hsys;
-
-        mt
-        elapsed = toc
+        elapsed = toc;
+        
         if elapsed > computationTime
             done = true;
+            maxTerm = mt - 1;
+            mode = 'max'; % ensures the same number of terms are computed for each Hdip, test param
         else
             mt = mt + 1;
         end
-    end    
-elseif strcmp(mode,'max')    
+    end
+    
+elseif strcmp(mode,'max')
     for mt=1:maxTerm+1
         MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus);
-        trunc = trunc + MagnusTerms{mt};
         raw_hsizes(d,c,mt) = matOrder(MagnusTerms{mt})/hsys;
     end   
 end
