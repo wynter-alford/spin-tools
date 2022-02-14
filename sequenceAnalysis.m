@@ -17,26 +17,26 @@
 
 %% Control Parameters (change these)
 
-global dim pulse f1 Pulses knownOmegas knownQs knownPs
+global dim Pulses knownOmegas knownQs knownPs %#ok<GVMIS> 
 
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48,
 %    AS10M, AS10E, WHHWHH, ML10, WPW9-2Cycle, MG8
 
-sequenceName = 'MREV8' ;  % select sequence to test over.
-testVarName = 'coupling_lo'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo, phaseTrans, delta_lo, 'overrot_hi')
+%sequenceName = 'WHH' ;  % select sequence to test over.
+%testVarName = 'coupling_lo'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo, phaseTrans, delta_lo, 'overrot_hi')
 varMaxMod = 1; % factor by which to multiply the default testVarMax
 
 mode = 'max'; %can be 'max' to get up to maxTerm terms, or 'time' to compute for a certain amount of time
-maxTerm = 10; % highest Magnus series term to compute 
-computationTime = 
+%maxTerm = 10; % highest Magnus series term to compute 
+computationTime = 30; % once elapsed time reaches this many seconds, no further terms are computed for this loop.
 
 % Control Parameters
-testValueCount = 1;
+testValueCount = 40;
 couplingsCount = 4; % how many different coupling matrices to average over
 
 N = 4;
 pulse = 1.4e-6;
-tau = 3.4e-6;  % delay spacing
+%tau = 7.4e-6;  % delay spacing
 coupling = 5000;
 Delta = 00;
 overRotation = 0; %0 is a perfect pulse, +/- 0.01 is a 1% over/under rotation, etc.
@@ -55,21 +55,8 @@ testValueMax = getVarMax(testVarName,varMaxMod);
 
 initVars
 initCollectiveObs
-% % initvars, initCollectiveObs;
-% z=0.5*sparse([1 0; 0 -1]);
-% x=0.5*sparse( [ 0 1;1 0]); 
-% y=1i*0.5*sparse([0 -1;1 0]);
-% 
-% Z=sparse(dim,dim);
-% X=sparse(dim,dim);
-% Y=sparse(dim,dim);
-% for k=1:N
-%       Z = Z + mykron(speye(2^(k-1)),z,speye(2^(N-k)));
-%       X = X + mykron(speye(2^(k-1)),x,speye(2^(N-k)));
-%       Y = Y + mykron(speye(2^(k-1)),y,speye(2^(N-k)));
-% end
 
-% %% Initialize Hamiltonians (modified code)
+% %% Initialize Hamiltonians
 % 
 %  Hdips = cell(couplingsCount,1);
 %  % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
@@ -80,7 +67,7 @@ initCollectiveObs
 %  end
 load('Standard_Dipole_Hamiltonians(4).mat','Hdips');
 
-%% Iterate over different parameter values to see how term magnitude changes
+%% Construct Result Storage Arrays
 
 testVars = zeros(testValueCount,1);
 
@@ -106,11 +93,14 @@ results_CS = zeros(length(testVars),maxTerm+1);
 raw_C = zeros(length(testVars),couplingsCount,maxTerm+1);
 raw_CS = zeros(length(testVars),couplingsCount,maxTerm+1);
 
+%% Iterate over different parameter values, compute AHT terms and fidelities
+
 for d=1:length(testVars)
     
     % Configure Test Variable and Test Sequence
     if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
         tau = pulse + d*(testValueMax/testValueCount);
+        %tau = 10^(-d);
         testVars(d)=tau;
     elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')||strcmp(testVarName,'delta_lo')
         Delta = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
@@ -154,10 +144,8 @@ for d=1:length(testVars)
         %Calculate Magnus terms
         knownOmegas = {};
         knownPs = {};
-        knownQs = {};
-        
+        knownQs = {};        
         MagnusTerms = {};
-
         getMagnusTerms;
         
         % obtain experimental unitary
@@ -187,8 +175,6 @@ for d=1:length(testVars)
         results_hsizes(d,mt)=mean(raw_hsizes(d,:,mt));
         results_f(d,mt)=mean(raw_f(d,:,mt));
         results_Df(d,mt)=mean(raw_Df(d,:,mt)); 
-        results_C0(d,mt)=mean(raw_C0(d,:,mt));
-        results_CS(d,mt)=mean(raw_CS(d,:,mt));
     end
 
     results_fTS(d)=mean(raw_fTS(d,:));
@@ -199,6 +185,18 @@ for d=1:length(testVars)
 end
 
 
+%% Make Plotting More Convenient by saving colors now
+myColors = {[230 25 75],[245 130 48], [210 245 60], [60 180 75],  [0 130 200], [145 30 180]};
+% colors are:   red          orange      lime          green           blue         violet
+myColorsPlus = {[250 190 212],[230 25 75],[245 130 48],  [210 245 60], [60 180 75], [70 240 240], [0 130 200], [145 30 180], [0 0 0]};
+% colors are:        pink          red      orange           lime          green        cyan         blue         violet       black  
+for i=1:length(myColorsPlus)
+    if i<=length(myColors)
+        myColors{i} = myColors{i}/255;
+    end
+    myColorsPlus{i} = myColorsPlus{i}/255;    
+end
+
 %% Save Result Output
 its = num2str(tau*10^7);
 tauString = strcat(its(1),',',its(2));
@@ -207,4 +205,5 @@ if strcmp(testVarName,'coupling')||strcmp(testVarName,'Coupling')||strcmp(testVa
 elseif strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
     fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,string(coupling),']',string(Delta),'_REC_',string(maxTerm),'.mat');
 end
-save(fileDescriptor, 'sequenceName','results_hsizes', 'testVars','tau','coupling','Delta','N','couplingsCount','results_f','results_Df','pulse','results_fTS','results_DfTS','Hdips','maxTerm','tCyc','results_C0','results_CS','coupling','Delta')
+
+save(fileDescriptor)
