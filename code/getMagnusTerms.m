@@ -5,10 +5,10 @@ if strcmp(mode,'time')
     tic
     mt = 1;
     while ~done
-        MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus);
-        raw_hsizes(d,c,mt) = matOrder(MagnusTerms{mt})/hsys;
+        MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus); %#ok<*SAGROW> 
+        raw_hsizes(d,c,mt) = log10(specnorm(MagnusTerms{mt}));
         elapsed = toc;
-        
+        mt
         if elapsed > computationTime
             done = true;
             maxTerm = mt - 1;
@@ -21,6 +21,6 @@ if strcmp(mode,'time')
 elseif strcmp(mode,'max')
     for mt=1:maxTerm+1
         MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus);
-        raw_hsizes(d,c,mt) = matOrder(MagnusTerms{mt})/hsys;
+        raw_hsizes(d,c,mt) = log10(specnorm(MagnusTerms{mt}));
     end   
 end

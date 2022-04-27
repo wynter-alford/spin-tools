@@ -32,8 +32,8 @@ function sequence = getSequence(sequenceName, X, Y)
         sequence.Taus = ones(25,1);
         sequence.Taus(1)=0;
     
-    %AZ-48
-    elseif strcmp(sequenceName,'AZ48')
+    %AZ-48 (OLD VERSION)
+    elseif strcmp(sequenceName,'AZ48_OLD')
         sequence.Pulses = {-X,Y,Y,X,Y,Y,-Y,X,X,-Y,X,X,Y,X,X,-Y,X,X,-Y,X,-Y,X,X,-Y,-X,-X,Y,Y,-X,Y,Y,-Y,X,-Y,-Y,X,-Y,X,X,-Y,X,X,-Y,-X,-X,-Y,-X,-X};
         sequence.Taus = ones(49,1);
         sequence.Taus(1)=0;
@@ -72,5 +72,15 @@ function sequence = getSequence(sequenceName, X, Y)
     elseif strcmp(sequenceName,'I24')
         sequence.Pulses = {X, Y, Y, X, -Y, -X, -Y, -X, Y, X, Y, X, -Y, -X, -X, -Y, -X, Y, -X, -Y, X, Y, -X, Y};
         sequence.Taus = [1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1];
+    
+    elseif strcmp(sequenceName,'SED48')
+        sequence.Pulses = {-X, -Y, -X, Y, -X, Y, -Y, -X, Y, -X, -Y, -X, X, Y, X, -Y, X, -Y, Y, X, -Y, X, Y, X, X, Y, Y, X, Y, X, -Y, X, -X, Y, -X, -Y, -X, -Y, -X, Y, -Y, X, -Y, -X, -Y, -X, X, Y};
+        sequence.Taus = [1 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 2 1 1];
+
+    elseif strcmp(sequenceName,'AZ48')
+        sequence.Pulses = {X, X, -Y, X, X, -Y, -X, -Y, -Y, -X, -Y, -Y, -X, -Y, -Y, -X, -Y, -Y, Y, Y, Y, -X, Y, Y, -X, -X, Y, Y, -X, Y, Y, Y, -X, Y, Y, -X, X, -Y, -Y, X, -Y, -Y, -Y, -X, -X, -Y, -X, -X};
+        sequence.Taus = ones(49,1);
+        sequence.Taus(1)=0;
+    
     end
 end
