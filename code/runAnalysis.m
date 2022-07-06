@@ -1,3 +1,14 @@
+%% runAnalysis.m
+% Wynter Alford
+% Original version from April 2020. Last updated July 2021. 
+%
+% Analyze pulse sequences in terms of the Magnus Expansion.  Compute terms
+% in the Magnus Series.  Compute fidelity metrics describing how well the
+% propagator from the computed Magnus terms resembles the actual
+% experimental propagator, with either finite length or instantaneous
+% pulses. New features added frequently as I continue to research this
+% problem.
+
 %% Configuration
 global dim Pulses knownOmegas knownQs knownPs 
 
@@ -15,9 +26,9 @@ initCollectiveObs
 
 %% Initialize Hamiltonians
 
-if N==4&&couplingsCount<=4
-    load('Standard_Dipole_Hamiltonians(4).mat','Hdips');
-else
+%if N==4&&couplingsCount<=4
+%    load('Standard_Dipole_Hamiltonians(4).mat','Hdips');
+%else
      Hdips = cell(couplingsCount,1);
      % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
      for j=1:couplingsCount
@@ -25,7 +36,7 @@ else
          dip = triu(dip,1) + triu(dip,1)';
          Hdips{j} = getHdip(N, dim, x, y, z, dip);
      end
-end
+%end
 
 %% Construct Result Storage Arrays
 
@@ -35,17 +46,28 @@ testVars = zeros(testValueCount,1);
 results_hsizes = zeros(length(testVars),maxTerm+1);
 raw_hsizes = zeros(length(testVars),couplingsCount,maxTerm+1);
 
-% Hn Fidelities
+% Hn Overlaps (fn)
 results_f = zeros(length(testVars),maxTerm+1);
 results_Df = zeros(length(testVars),maxTerm+1);
 raw_f = zeros(length(testVars),couplingsCount,maxTerm+1);
 raw_Df = zeros(length(testVars),couplingsCount,maxTerm+1);
+
+% Hn Propagator Distances (dn)
+results_d = zeros(length(testVars),maxTerm+1);
+results_Dd = zeros(length(testVars),maxTerm+1);
+raw_d = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_Dd = zeros(length(testVars),couplingsCount,maxTerm+1);
 
 % Time-Suspension Fidelities
 results_fTS = zeros(length(testVars),1);
 results_DfTS = zeros(length(testVars),1);
 raw_fTS = zeros(length(testVars),couplingsCount);
 raw_DfTS = zeros(length(testVars),couplingsCount);
+
+results_dTS = zeros(length(testVars),1);
+results_DdTS = zeros(length(testVars),1);
+raw_dTS = zeros(length(testVars),couplingsCount);
+raw_DdTS = zeros(length(testVars),couplingsCount);
 
 % Commutation with Other Terms
 results_C0 = zeros(length(testVars),maxTerm+1);
@@ -120,17 +142,22 @@ for d=1:length(testVars)
         for au=1:maxTerm+1
             sumAH = sumAH + MagnusTerms{au};
             AHTUnitaries{au} = expm(-1i*sumAH*2*pi*tCyc);
-            raw_f(d,c,au)=metric(expUnitary, AHTUnitaries{au}, N);
-            raw_Df(d,c,au) = metric(deltaUnitary, AHTUnitaries{au}, N);
+            
+            raw_f(d,c,au)=overlap(expUnitary, AHTUnitaries{au}, N);
+            raw_Df(d,c,au) = overlap(deltaUnitary, AHTUnitaries{au}, N);
+            
+            raw_d(d,c,au)=uDist(expUnitary,AHTUnitaries{au},N);
+            raw_Dd(d,c,au)=uDist(expUnitary,AHTUnitaries{au},N);
 
-            raw_fDiff(d,c,au)=mdiff(deltaUnitary, AHTUnitaries{au}, N);
         end
         
         % Time-suspension fidelities
-        raw_fTS(d,c) = metric(expUnitary,speye(dim,dim),N);
-        raw_DfTS(d,c) = metric(deltaUnitary,speye(dim,dim),N); 
-
-        
+        raw_fTS(d,c) = overlap(expUnitary,speye(dim,dim),N);
+        raw_DfTS(d,c) = overlap(deltaUnitary,speye(dim,dim),N); 
+    
+        raw_dTS(d,c) = uDist(expUnitary,speye(dim,dim),N);
+        raw_DdTS(d,c) = uDist(deltaUnitary,speye(dim,dim),N); 
+              
     end
     
     % Average Raw Results   
@@ -138,11 +165,14 @@ for d=1:length(testVars)
         results_hsizes(d,mt)=mean(raw_hsizes(d,:,mt));
         results_f(d,mt)=mean(raw_f(d,:,mt));
         results_Df(d,mt)=mean(raw_Df(d,:,mt)); 
-        results_fDiff(d,mt)=mean(raw_fDiff(d,:,mt));
+        results_d(d,mt)=mean(raw_d(d,:,mt));
+        results_Dd(d,mt)=mean(raw_Dd(d,:,mt));
     end
 
     results_fTS(d)=mean(raw_fTS(d,:));
     results_DfTS(d)=mean(raw_DfTS(d,:));
+    results_dTS(d)=mean(raw_dTS(d,:));
+    results_DdTS(d)=mean(raw_DdTS(d,:));
 
     % progress tracker for my impatient self
     strcat(testVarName,'_',sequenceName,'_',string(d))

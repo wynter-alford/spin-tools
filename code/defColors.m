@@ -1,4 +1,8 @@
-%% Colors
+%% defColors.m
+% Wynter Alford
+% February 2022
+%
+% Defines a useful set of colors for MATLAB plots
 
 myColors = {[250 190 212],[230 25 75],[245 130 48],  [210 245 60], [60 180 75], [70 240 240], [0 130 200], [145 30 180], [0 0 0]};
 % colors are:     pink          red      orange           lime          green        cyan         blue         violet       black  

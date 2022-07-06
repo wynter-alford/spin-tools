@@ -1,3 +1,10 @@
+%% timeAdjust.m
+% Wynter Alford
+% January 2022
+%
+% Individually adjusts results by f^(T/tau) when tau is the parameter being
+% varied, for fair comparison between shorter and longer tau runs.
+
 function modRes = timeAdjust(T, taus, result, tauCount)
     if length(taus)~=length(result)
         error('taus and result must have the same length')

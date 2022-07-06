@@ -1,3 +1,12 @@
+%% getVarMax.m
+% Wynter Alford
+% February 2022
+%
+% Returns the standard testing range for parameter testVarName. 'lo' options
+% exist for the coupling and delta (offset) parameters to test over a
+% smaller range.  coupling_lo has become the default testing range for the
+% coupling strength.
+
 function testValueMax = getVarMax(testVarName,rangeMod)
     if ~exist("rangeMod",'var')
         rangeMod = 1;

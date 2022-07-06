@@ -1,4 +1,7 @@
-% Ben Alford, November 2020
+%% comm.m
+% Wynter Alford
+% November 2020
+% 
 % Calculates the commutator of two matrices (or other multipliable objects)
 
 function ct = comm(A,B) % calculates the commutator of a pair of matrices

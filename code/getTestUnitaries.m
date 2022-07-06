@@ -1,3 +1,10 @@
+%% getTestUnitaries.m
+% Wynter Alford
+% February 2022
+% 
+% Computes the experimental unitary operator for a pulse sequence, with
+% both finite pulses (testUnitary) and instantaneous pulses (deltaUnitary)
+
 function testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1)
     global dim 
     

@@ -1,3 +1,10 @@
+%% plotCorrections.m
+% Wynter Alford
+% February 2022
+%
+% Code to plot various types of results.  Use MATLAB's Run Section feature
+% and select the plot type you'd like to make.
+
 %% Colors
 
 myColors = {[250 190 212],[230 25 75],[245 130 48],  [210 245 60], [60 180 75], [70 240 240], [0 130 200], [145 30 180], [0 0 0]};
@@ -33,11 +40,16 @@ fExp = 72/sum(getSequence(sequenceName,1,1).Taus);
 defColors
 plot(testVars,-log10(1-results_Df(:,1).^fExp),'Color',myColors{9},'LineWidth',3)
 plot(testVars,-log10(1-results_Df(:,3).^fExp),'Color',myColors{2},'LineWidth',3, 'LineStyle','--')
-%plot(testVars,-log10(1-results_Df(:,maxTerm+1).^fExp),'Color',myColors{6},'LineStyle',':','LineWidth',2.5)
+plot(testVars,-log10(1-results_Df(:,maxTerm+1).^fExp),'Color',myColors{6},'LineStyle',':','LineWidth',2.5)
+
+plot(testVars,-log10((results_Dd(:,1)).^fExp),'LineWidth',3)
+plot(testVars,-log10((results_Dd(:,3)).^fExp),'LineWidth',3)
+plot(testVars,-log10((results_Dd(:,maxTerm+1)).^fExp),'LineWidth',3)
+
 legend('f0','f2',strcat('f',string(maxTerm)))
 h = xlabel('Tau Spacing (s)');
 set(h,'interpreter','latex','fontsize',14);
-h = ylabel('$-\log(1-f_n^{72/L})$');
+h = ylabel('Adjusted Log Metric');
 set(h,'interpreter','latex','fontsize',14);
 h = title(sequenceName);
 set(h,'interpreter','latex','fontsize', 16);
@@ -67,12 +79,19 @@ defColors
 plot(testVars,-log10(1-results_Df(:,1).^fExp),'Color',myColors{9},'LineWidth',3)
 plot(testVars,-log10(1-results_Df(:,3).^fExp),'Color',myColors{2},'LineWidth',3, 'LineStyle','--')
 plot(testVars,-log10(1-results_Df(:,maxTerm+1).^fExp),'Color',myColors{6},'LineStyle',':','LineWidth',2.5)
-legend('f0','f2',strcat('f',string(maxTerm)))
+ylabel('Adjusted Log-Overlap'); % FIX FOR DIFFERENT NORMS
+
+yyaxis right
+plot(testVars,-log10((results_Dd(:,1)).^fExp),'LineWidth',3,'Color',myColors{7})
+plot(testVars,-log10((results_Dd(:,3)).^fExp),'LineWidth',3,'Color',myColors{1},'LineStyle','--')
+plot(testVars,-log10((results_Dd(:,maxTerm+1)).^fExp),'LineWidth',2.5,'Color',myColors{8},'LineStyle',':')
+ylabel('Adjusted Log-Distance');
+
+legend('f0','f2',strcat('f',string(maxTerm)),'d0','d2',strcat('d',string(maxTerm)))
 ax = gca;
 ax.FontSize = 16;
 h = xlabel('$\omega_D$ ($s^{-1}$)');
 set(h,'interpreter','latex','FontSize',21);
-ylabel('Adjusted Log-Infidelity'); % FIX FOR DIFFERENT NORMS
 title(sequenceName);
 
 %% Fit ^^ to 1-(x/w0)^a 

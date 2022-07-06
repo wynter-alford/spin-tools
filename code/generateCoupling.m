@@ -1,3 +1,11 @@
+%% generateCoupling.m
+% Wynter Alford
+% April 2020
+%
+% Generates up to 8 random sets of coupling constants, in matrix form.
+% Couplings are drawn from a normal distribution; currently there are no
+% hard limits on coupling strengths.
+
 function as = generateCoupling(Nin)
 a1 = abs(randn(Nin));
 a1 = triu(a1,1) + triu(a1,1)';

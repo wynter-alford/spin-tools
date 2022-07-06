@@ -1,7 +1,9 @@
-% Ben Alford, November 2020
-% Calculates the order of magnitude of a matrix, as measured by the log10
-% of the square root of the trace of A*A.
+%% tracenorm.m
+% Wynter Alford
+% November 2020
+%
+% Computes the trace norm (1-norm) of a matrix A
 
-function orh = matOrder(A) % calculates the magnitude of a matrix
-    orh = sqrt(trace(A*A));
+function result = tracenorm(A)
+    result = sqrt(trace(A*A));
 end

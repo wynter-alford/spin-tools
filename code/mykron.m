@@ -1,3 +1,9 @@
+%% mykron.m
+% Evan Fortunato
+% April 2000
+%
+% Description below by original author
+
 function PO=mykron(varargin)
 %function PO=mykron(varargin)
 % This little function allows you to pass all of

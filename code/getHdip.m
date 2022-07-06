@@ -1,8 +1,15 @@
+%% getHdip.m
+% author unknown
+% date unknown
+%
+% Creates the secular dipolar Hamiltonian, in matrix form, with a the
+% matrix of couplings between spins and x,y,z the pauli matrices.
+
 function Hdip = getHdip(N, dim, x, y, z, a)
 
 % N: number of spins
 % x/y/z: Pauli matrices
-% a: dipolar interaction strengths (NxN symmetric matrix)
+% a: dipolar interaction strengths d_ij (NxN symmetric matrix)
 
 Hdip = sparse(dim, dim);
 

@@ -1,3 +1,9 @@
+%% getPO.m
+% Author and date not listed
+%
+% Description below by original author.
+
+
 % [coeffs, lbls] = getPO(rho, threshold);
 %
 % getPO takes a density matrix and decomposes it in terms

@@ -1,8 +1,10 @@
-% Ben Alford, November 2020
+%% getURF.m
+% Wynter Alford
+% November 2020
 %
 % Calculates the toggling unitary for a pulse sequence after the first
-% 'frame' pulses.  Assumes pulses have zero length. See the script magnus.m
-% for example usage.
+% 'frame' pulses.  Assumes pulses are instantaneous, as is standard in AHT
+% computations for pulse sequences.
 
 function URF = getURF(frame)
     global dim Pulses
