@@ -14,29 +14,18 @@ global dim Pulses knownOmegas knownQs knownPs
 
 % Derived parameters
 dim = 2^N;
-f1 = 1/4/pulse; %Can adjust f1 and w1 by changing 'pulse' variable
+f1 = 1/4/pulse; 
 w1 = 2*pi*f1;
 rotationError = 1+overRotation; %1 is a perfect pulse
 
 %Configure Test Variable
 testValueMax = getVarMax(testVarName,varMaxMod);
 
+%% Initialize Quantum Setting
+
 initVars
 initCollectiveObs
-
-%% Initialize Hamiltonians
-
-%if N==4&&couplingsCount<=4
-%    load('Standard_Dipole_Hamiltonians(4).mat','Hdips');
-%else
-     Hdips = cell(couplingsCount,1);
-     % Generate [couplingsCount] dipole Hamiltonians, each with a different coupling matrix
-     for j=1:couplingsCount
-         dip = abs(randn(N));
-         dip = triu(dip,1) + triu(dip,1)';
-         Hdips{j} = getHdip(N, dim, x, y, z, dip);
-     end
-%end
+initHamiltonians
 
 %% Construct Result Storage Arrays
 
@@ -83,6 +72,9 @@ for d=1:length(testVars)
     if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
         tau = pulse + d*(testValueMax/testValueCount);
         %tau = 10^(-d);
+        testVars(d)=tau;
+    elseif strcmp(testVarName,'tau_lo')
+        tau = d*(testValueMax/testValueCount);
         testVars(d)=tau;
     elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')||strcmp(testVarName,'delta_lo')
         Delta = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
@@ -157,7 +149,7 @@ for d=1:length(testVars)
     
         raw_dTS(d,c) = uDist(expUnitary,speye(dim,dim),N);
         raw_DdTS(d,c) = uDist(deltaUnitary,speye(dim,dim),N); 
-              
+        
     end
     
     % Average Raw Results   
@@ -173,11 +165,10 @@ for d=1:length(testVars)
     results_DfTS(d)=mean(raw_DfTS(d,:));
     results_dTS(d)=mean(raw_dTS(d,:));
     results_DdTS(d)=mean(raw_DdTS(d,:));
-
+    
     % progress tracker for my impatient self
-    strcat(testVarName,'_',sequenceName,'_',string(d))
+    % strcat(testVarName,'_',sequenceName,'_',string(d))
 end
-
 
 %% Make Plotting More Convenient by saving colors now
 
@@ -195,7 +186,7 @@ if saveRuns
     tauString = strcat(its(1),',',its(2));
     if strcmp(testVarName,'coupling')||strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling_lo')
         fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,tauString,']',string(Delta),'_REC_',string(maxTerm));
-    elseif strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
+    elseif strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')||strcmp(testVarName,'tau_lo')
         fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,string(coupling),']',string(Delta),'_REC_',string(maxTerm));
     end  
     if ~exist('fileNameAdd','var')
