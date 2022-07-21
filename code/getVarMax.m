@@ -13,6 +13,8 @@ function testValueMax = getVarMax(testVarName,rangeMod)
     end
     if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
         testValueMax = 10e-6;
+    elseif strcmp(testVarName,'tau_lo')
+        testValueMax = 4e-6;
     elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')
         testValueMax = 1000;
     elseif strcmp(testVarName,'Coupling')||strcmp(testVarName,'coupling')
