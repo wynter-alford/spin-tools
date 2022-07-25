@@ -9,3 +9,4 @@ for k=1:N
       X = X + mykron(speye(2^(k-1)),x,speye(2^(N-k)));
       Y = Y + mykron(speye(2^(k-1)),y,speye(2^(N-k)));
 end
+

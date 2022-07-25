@@ -29,7 +29,7 @@ if strcmp(mode,'time')
     
 elseif strcmp(mode,'max')
     for mt=1:maxTerm+1
-        MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus);
+        MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,tau*Taus);
         raw_hsizes(d,c,mt) = log10(specnorm(MagnusTerms{mt}));
     end   
 end

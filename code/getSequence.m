@@ -14,7 +14,7 @@
 % For sequences like the YXX sequences that start with a pulse, Taus(1)=0
 
 function sequence = getSequence(sequenceName, X, Y)
-    %global X Y %#ok<GVMIS> 
+
     %WAHUHA
     if strcmp(sequenceName, 'WHH')
         sequence.Pulses = {X, -Y, Y, -X};
@@ -104,6 +104,13 @@ function sequence = getSequence(sequenceName, X, Y)
     elseif strcmp(sequenceName,'SED96') % Designed by Owen Eskandari; best overall 96-pulse sequence
         sequence.Pulses = {-X, Y, -Y, -X, Y, -X, X, Y, -Y, X, -X, -Y, X, -Y, X, -Y, Y, -X, -X, -Y, Y, X, Y, X, Y, X, Y, -X, -X, Y, -Y, -X, -Y, X, X, -Y, X, Y, -X, -Y, X, -Y, Y, -X, -Y, -X, X, Y, Y, X, X, Y, -X, Y, X, Y, Y, X, Y, -X, -Y, -X, X, -Y, -X, -Y, X, -Y, -Y, -X, -Y, X, Y, -X, X, Y, X, Y, -X, Y, -Y, -X, -Y, X, -Y, -X, -Y, X, -X, Y, -X, -Y, -X, -Y, Y, X};
         sequence.Taus =  [1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1];
+        error("SED96 is currently not functional")
+    
+    elseif strcmp(sequenceName,'TestXY')
+        sequence.Pulses = {X, Y};
+        sequence.Taus = [1 1 1];
+    else
+        error("Invalid Sequence Name. See getSequence.m for all valid sequence names.")    
     
     end
 end

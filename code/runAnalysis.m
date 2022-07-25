@@ -14,7 +14,7 @@ global dim Pulses knownOmegas knownQs knownPs
 
 % Derived parameters
 dim = 2^N;
-f1 = 1/4/pulse; 
+f1 = 1/(4*pulse); 
 w1 = 2*pi*f1;
 rotationError = 1+overRotation; %1 is a perfect pulse
 
@@ -71,10 +71,9 @@ for d=1:length(testVars)
     % Configure Test Variable and Test Sequence
     if strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')
         tau = pulse + d*(testValueMax/testValueCount);
-        %tau = 10^(-d);
         testVars(d)=tau;
     elseif strcmp(testVarName,'tau_lo')
-        tau = d*(testValueMax/testValueCount);
+        tau = d*(testValueMax/testValueCount); % WARNING: May interact poorly with finite-pulse results
         testVars(d)=tau;
     elseif strcmp(testVarName,'Delta')||strcmp(testVarName,'delta')||strcmp(testVarName,'delta_lo')
         Delta = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
@@ -84,23 +83,16 @@ for d=1:length(testVars)
         testVars(d)=coupling;
     elseif strcmp(testVarName,'Overrotations')||strcmp(testVarName,'overrotations')||strcmp(testVarName,'overrot_hi')
         overRotation = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
-        rotationError = 1+overRotation;
+        rotationError = 1+overRotation; % rotationError = 1 is a pulse with no rotation error. <1 or >1 is an under/over rotation.
         testVars(d) = overRotation;
     elseif strcmp(testVarName,'phaseTrans')
         phaseTrans = 2*(d-(testValueCount/2))*(testValueMax/testValueCount);
         testVars(d) = phaseTrans;
     end
-  
-    sequence = getSequence(sequenceName,X,Y);
     
-
-    % Add overrotations and phase transients
-    for editPulse = 1:length(sequence.Pulses)
-        sequence.Pulses{editPulse}=pulseError(sequence.Pulses{editPulse},rotationError,phaseTrans,X,Y);
-    end
-    
+    sequence = getSequence(sequenceName,X,Y);   
     Pulses = sequence.Pulses;
-    Taus = tau * sequence.Taus;        
+    Taus = tau*sequence.Taus;        
     tCyc = sum(Taus);
     
     % For each dipolar coupling matrix
@@ -110,9 +102,11 @@ for d=1:length(testVars)
         Hsys = Hdip*coupling + Z*Delta;        
         hsys = specnorm(Hsys);
         
+        initPulses % unitaries for pulses
+        
         toggledHsys = {};
         for p = 0:length(Pulses)
-            toggledHsys{p+1} = getURF(p)'*Hsys*getURF(p); %#ok<*SAGROW> 
+            toggledHsys{p+1} = getURF(p,X,Y,Ux,Uy,Uxbar,Uybar)'*Hsys*getURF(p,X,Y,Ux,Uy,Uxbar,Uybar); %#ok<*SAGROW> 
         end
         
         %Calculate Magnus terms
@@ -123,9 +117,7 @@ for d=1:length(testVars)
         getMagnusTerms;
         
         % obtain experimental unitary
-        testUnitaries = getTestUnitaries(sequence,Hsys,pulse,tau,f1);
-        expUnitary = testUnitaries{1};
-        deltaUnitary = testUnitaries{2};
+        getTestUnitaries
 
         % obtain theoretical unitaries from AHT and compute Fidelity
         AHTUnitaries = {};
@@ -166,8 +158,13 @@ for d=1:length(testVars)
     results_dTS(d)=mean(raw_dTS(d,:));
     results_DdTS(d)=mean(raw_DdTS(d,:));
     
+%     WTs(WTind) = coupling * tau;
+%     WTF0s(WTind) = results_f(d,mt);
+%     WTHsizes(WTind,:)=results_hsizes(d,:);
+%     WTind = WTind + 1;
+    
     % progress tracker for my impatient self
-    % strcat(testVarName,'_',sequenceName,'_',string(d))
+    strcat(testVarName,'_',sequenceName,'_',string(d))
 end
 
 %% Make Plotting More Convenient by saving colors now
