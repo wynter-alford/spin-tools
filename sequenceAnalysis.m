@@ -10,7 +10,7 @@
 % are added by modifying the function getSequence.m
 
 clear
-
+tic
 %% Control Parameters (change these)
 
 global dim Pulses knownOmegas knownQs knownPs 
@@ -19,11 +19,11 @@ global dim Pulses knownOmegas knownQs knownPs
 %    AS10M, AS10E, WHHWHH, ML10, WPW9-2Cycle, MG8, SED24, SED28, SED96
 
 sequenceName = 'WHH' ;  % select sequence to test over.
-testVarName = 'coupling_lo'; % select parameter to test over (Delta, Tau, Coupling, coupling_lo, phaseTrans, delta_lo, 'overrot_hi')
+testVarName = 'coupling_lo'; % select parameter to test over (tau, tau_lo, coupling, coupling_lo, delta, delta_lo, phaseTrans, overrot, overrot_hi')
 varMaxMod = 1; % factor by which to multiply the default testVarMax
 
 mode = 'max'; %can be 'max' to get up to maxTerm terms, or 'time' to compute for a certain amount of time
-maxTerm = 60; % highest Magnus series term to compute 
+maxTerm = 10; % highest Magnus series term to compute 
 computationTime = 120; % once elapsed time reaches this many seconds, no further terms are computed for this loop.
 
 % Control Parameters
@@ -38,8 +38,9 @@ Delta = 00;
 overRotation = 0; %0 is a perfect pulse, +/- 0.01 is a 1% over/under rotation, etc.
 phaseTrans = 0; %0 is no phase transient, 1 is a pi/2 phase transient
 
-fileNameAdd = '';
+fileNameAdd = 'NNewTest';
 saveRuns = true; % if true, the workspace will be saved as a .mat file when the script concludes.
 %% Analyze Sequence
 
 runAnalysis;
+toc
