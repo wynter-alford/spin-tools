@@ -12,24 +12,24 @@ global knownOmegas knownPs knownQs %#ok<NUSED>
 if strcmp(mode,'time')
     done = false;
     tic
-    mt = 1;
+    termCalcInd = 1;
     while ~done
-        MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,Taus); %#ok<*SAGROW> 
-        raw_hsizes(d,c,mt) = log10(specnorm(MagnusTerms{mt}));
+        MagnusTerms{termCalcInd} = (1i/tCyc)*Omega(termCalcInd,toggledHsys,Taus); %#ok<*SAGROW> 
+        raw_hsizes(paramValInd,coupMatInd,termCalcInd) = log10(specnorm(MagnusTerms{termCalcInd}));
         elapsed = toc;
-        mt
+        termCalcInd %#ok<NOPTS>
         if elapsed > computationTime
             done = true;
-            maxTerm = mt - 1;
+            maxTerm = termCalcInd - 1;
             mode = 'max'; % ensures the same number of terms are computed for each Hdip, test param
         else
-            mt = mt + 1;
+            termCalcInd = termCalcInd + 1;
         end
     end
     
 elseif strcmp(mode,'max')
-    for mt=1:maxTerm+1
-        MagnusTerms{mt} = (1i/tCyc)*Omega(mt,toggledHsys,tau*Taus);
-        raw_hsizes(d,c,mt) = log10(specnorm(MagnusTerms{mt}));
+    for termCalcInd=1:maxTerm+1
+        MagnusTerms{termCalcInd} = (1i/tCyc)*Omega(termCalcInd,toggledHsys,Taus);
+        raw_hsizes(paramValInd,coupMatInd,termCalcInd) = log10(specnorm(MagnusTerms{termCalcInd}));
     end   
 end
