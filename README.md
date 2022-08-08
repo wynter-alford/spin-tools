@@ -13,19 +13,19 @@ Contains a number of scripts which were formerly used to collect results and are
 ### Result Array Naming Convention
 Array naming convention is `results_ABC` with a 3-letter code. 
 
-The first letter is the METRIC in question.  The metric options are:
-**O**: overlap(Uexp, AHTUnitaries{termInd}) is the propagator overlap of the experimental and AHT propagators.
-**D:** uDist(Uexp, AHTUnitaries{termInd}) is the unitary distance (currently using the spectral norm) between the experimental and AHT propagators.
-**H:** specnorm(MagnusTerms{termInd}) contains the norms (spectral, currently) of the Average Hamiltonian terms.
+The first letter is the METRIC in question.  The metric options are:  
+**O**: `overlap(Uexp, AHTUnitaries{termInd})` is the propagator overlap of the experimental and AHT propagators.  
+**D:** `uDist(Uexp, AHTUnitaries{termInd})` is the unitary distance (currently using the spectral norm) between the experimental and AHT propagators.  
+**H:** `specnorm(MagnusTerms{termInd})` contains the norms (spectral, currently) of the Average Hamiltonian terms.  
 
-The second letter is the PULSE TREATMENT for constructing Uexp, the EXPERIMENTAL propagator. The options are:
-**I:** Instantaneous pulses (deltaUnitary)
-**F:** Finite pulses (expUnitary)
-**H:** used if the Metric is H, since in that case treatment of Uexp is irrelevant.
+The second letter is the PULSE TREATMENT for constructing Uexp, the EXPERIMENTAL propagator. The options are:  
+**I:** Instantaneous pulses (deltaUnitary)  
+**F:** Finite pulses (expUnitary)  
+**H:** used if the Metric is H, since in that case treatment of Uexp is irrelevant.  
 
-The third letter is the PULSE METHOD FOR AHT, indicating whether the Average Hamiltonian computations used pulse divisions. The options are:
-**T:** Traditional analysis assuming instantaneous pulses
-**P:** Pulse length incorporated into the AHT computations.
-**S** Uexp compared only to the identity matrix; AHT terms not computed (the true Time-Suspension fidelity) (Never occurs with HH).
+The third letter is the PULSE METHOD FOR AHT, indicating whether the Average Hamiltonian computations used pulse divisions. The options are:  
+**T:** Traditional analysis assuming instantaneous pulses  
+**P:** Pulse length incorporated into the AHT computations  
+**S** Uexp compared only to the identity matrix; AHT terms not computed (the true Time-Suspension fidelity) (Never occurs with HH).  
 
-For example, `results_OFT` is the overlap between testUnitary (Uexp for finite pulses) and AHTUnitaries{termInd} (U_AHT,n not accounting for pulse widths in the AHT computations).
+For example, `results_OFT` is the overlap between `testUnitary` (Uexp for finite pulses) and `AHTUnitaries{termInd}` (U_AHT,n not accounting for pulse widths in the AHT computations).
