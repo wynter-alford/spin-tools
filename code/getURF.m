@@ -5,9 +5,12 @@
 % Calculates the toggling unitary for a pulse sequence after the first
 % 'frame' pulses.  Assumes pulses are instantaneous, as is standard in AHT
 % computations for pulse sequences.
+%
+% Make sure that the Ux, etc passed are for instantaneous pulses
 
-function URF = getURF(frame,X,Y,Ux,Uy,Uxbar,Uybar)
-    global dim Pulses
+
+function URF = getURF(frame,Pulses,X,Y,Ux,Uy,Uxbar,Uybar) 
+    global dim
     
     if frame < 1
         URF = speye(dim,dim); %returns the identity if frame == 0

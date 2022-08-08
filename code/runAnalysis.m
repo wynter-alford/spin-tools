@@ -28,41 +28,68 @@ initCollectiveObs
 initHamiltonians
 
 %% Construct Result Storage Arrays
+% Array naming convention is results_ABC with a 3-letter code.
+% 
+% The first letter is the METRIC in question.  The metric options are:
+% O: overlap(Uexp, AHTUnitaries{termInd}) is the propagator overlap of the
+% experimental and AHT propagators.
+% D: uDist(Uexp, AHTUnitaries{termInd}) is the unitary distance (currently
+% using the spectral norm) between the experimental and AHT propagators.
+% H: specnorm(MagnusTerms{termInd}) is the norm of the average Hamiltonian
+% term.
+%
+% The second letter is the PULSE TREATMENT for constructing Uexp, the
+% EXPERIMENTAL propagator. The options are:
+% I: Instantaneous pulses (deltaUnitary)
+% F: Finite pulses (expUnitary)
+% H: used if the Metric is H, since in that case treatment of Uexp is
+% irrelevant.
+%
+% The third letter is the PULSE METHOD FOR AHT, indicating whether the
+% Average Hamiltonian computations used pulse divisions. The options are:
+% T: Traditional analysis assuming instantaneous pulses
+% P: Pulse length incorporated into the AHT computations.
+% S: Uexp compared only to the identity matrix; AHT terms not computed
+% (the true Time-Suspension fidelity) (Never occurs with HH).
+%
+% For example, results_OFT is the overlap between testUnitary (Uexp for
+% finite pulses) and AHTUnitaries{termInd} (U_AHT,n not accounting for
+% pulse widths in the AHT computations).
 
 testVars = zeros(testValueCount,1);
 
 % Size of Magnus Terms
-results_hsizes = zeros(length(testVars),maxTerm+1);
-raw_hsizes = zeros(length(testVars),couplingsCount,maxTerm+1);
+results_HHT = zeros(length(testVars),maxTerm+1);
+results_HHP = zeros(length(testVars),maxTerm+1);
+
+raw_HHT = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_HHP = zeros(length(testVars),couplingsCount,maxTerm+1);
 
 % Hn Overlaps (fn)
-results_f = zeros(length(testVars),maxTerm+1);
-results_Df = zeros(length(testVars),maxTerm+1);
-raw_f = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_Df = zeros(length(testVars),couplingsCount,maxTerm+1);
+results_OIT = zeros(length(testVars),maxTerm+1);
+results_OFT = zeros(length(testVars),maxTerm+1);
+results_OFP = zeros(length(testVars),maxTerm+1);
+results_OFS = zeros(length(testVars),1);
+results_OIS = zeros(length(testVars),1);
+
+raw_OIT = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_OFT = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_OFP = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_OFS = zeros(length(testVars),couplingsCount);
+raw_OIS = zeros(length(testVars),couplingsCount);
 
 % Hn Propagator Distances (dn)
-results_d = zeros(length(testVars),maxTerm+1);
-results_Dd = zeros(length(testVars),maxTerm+1);
-raw_d = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_Dd = zeros(length(testVars),couplingsCount,maxTerm+1);
+results_DIT = zeros(length(testVars),maxTerm+1);
+results_DFT = zeros(length(testVars),maxTerm+1);
+results_DFP = zeros(length(testVars),maxTerm+1);
+results_DFS = zeros(length(testVars),1);
+results_DIS = zeros(length(testVars),1);
 
-% Time-Suspension Fidelities
-results_fTS = zeros(length(testVars),1);
-results_DfTS = zeros(length(testVars),1);
-raw_fTS = zeros(length(testVars),couplingsCount);
-raw_DfTS = zeros(length(testVars),couplingsCount);
-
-results_dTS = zeros(length(testVars),1);
-results_DdTS = zeros(length(testVars),1);
-raw_dTS = zeros(length(testVars),couplingsCount);
-raw_DdTS = zeros(length(testVars),couplingsCount);
-
-% Commutation with Other Terms
-% results_C0 = zeros(length(testVars),maxTerm+1); % [Hn,H0]
-% results_CS = zeros(length(testVars),maxTerm+1); % [Hn,H0+H1+...+H(n-1)]
-% raw_C = zeros(length(testVars),couplingsCount,maxTerm+1);
-% raw_CS = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_DFS = zeros(length(testVars),couplingsCount);
+raw_DIS = zeros(length(testVars),couplingsCount);
+raw_DFT = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_DIT = zeros(length(testVars),couplingsCount,maxTerm+1);
+raw_DFP = zeros(length(testVars),couplingsCount,maxTerm+1);
 
 %% Iterate over different parameter values, compute AHT terms and fidelities
 
@@ -108,61 +135,90 @@ for paramValInd=1:length(testVars)
         initPulses
         getTestUnitaries
         
-        toggledHsys = {};
+        % Set up "traditional" (HHT) toggled Hsys
+        toggledHsys = cell(1,length(Pulses)+1);
+        toggledHsysP = cell(1,length(Pulses)*pulseDivs+1);
         for p = 0:length(Pulses)
-            toggledHsys{p+1} = getURF(p,X,Y,UDx,UDy,UDxbar,UDybar)'*Hsys*getURF(p,X,Y,UDx,UDy,UDxbar,UDybar); %#ok<*SAGROW> 
+            toggle = getURF(p,Pulses,X,Y,UDx,UDy,UDxbar,UDybar);
+            toggledHsys{p+1} = toggle'*Hsys*toggle; 
+        end
+
+        % Set up finite-pulse (HHP) toggled Hsys
+        if pulseDivs > 1
+            PulsesP = repmat({ones(1)},1,length(Pulses)*pulseDivs);
+            for semiPulseInd=1:length(PulsesP)
+                PulsesP{semiPulseInd}=PulsesP{semiPulseInd}*Pulses{ceil(semiPulseInd/pulseDivs)};
+            end
+            for p = 0:length(Pulses)*pulseDivs
+                toggle = getURF(p,PulsesP,X,Y,UdivX,UdivY,UdivXbar,UdivYbar);
+                toggledHsysP{p+1} = toggle'*Hsys*toggle;
+            end
+
+            TausP = Taus - (pulseDivs - 1) * pulse / pulseDivs;
+            TausP(1) = tau - pulse/2;
+            TausP(end) = tau - (pulse/2 - pulse/pulseDivs);
+            tauPInd = 1;
+            while tauPInd < length(TausP)  && pulseDivs > 1
+                TausP = [TausP(1:tauPInd) (pulse/pulseDivs)*ones(1,pulseDivs-1) TausP(tauPInd+1:end)];
+                tauPInd = tauPInd + pulseDivs; 
+            end
         end
                 
-        %Calculate Magnus terms
-        knownOmegas = {};
-        knownPs = {};
-        knownQs = {};        
-        MagnusTerms = {};
+        % Compute Magnus Series terms
         getMagnusTerms;
 
         % obtain theoretical unitaries from AHT and compute Fidelity
         AHTUnitaries = {};
+        AHTUnitariesP = {};
         sumAH = sparse(dim,dim);
+        sumAHP = sparse(dim,dim);
         
         for termInd=1:maxTerm+1
             sumAH = sumAH + MagnusTerms{termInd};
-            AHTUnitaries{termInd} = expm(-1i*sumAH*2*pi*tCyc);
-            
-            raw_f(paramValInd,coupMatInd,termInd)=overlap(expUnitary, AHTUnitaries{termInd}, N);
-            raw_Df(paramValInd,coupMatInd,termInd) = overlap(deltaUnitary, AHTUnitaries{termInd}, N);
-            
-            raw_d(paramValInd,coupMatInd,termInd)=uDist(expUnitary,AHTUnitaries{termInd},N);
-            raw_Dd(paramValInd,coupMatInd,termInd)=uDist(expUnitary,AHTUnitaries{termInd},N);
+            sumAHP = sumAHP + MagnusTermsP{termInd};
+            AHTUnitaries{termInd} = expm(-1i*sumAH*2*pi*tCyc); %#ok<SAGROW>
+            AHTUnitariesP{termInd} = expm(-1i*sumAHP*2*pi*tCyc); %#ok<SAGROW>  
 
+            
+            raw_OFT(paramValInd,coupMatInd,termInd)=overlap(expUnitary, AHTUnitaries{termInd}, N);
+            raw_OIT(paramValInd,coupMatInd,termInd) = overlap(deltaUnitary, AHTUnitaries{termInd}, N);
+            raw_OFP(paramValInd,coupMatInd,termInd) = overlap(expUnitary, AHTUnitariesP{termInd}, N);
+
+            raw_DFT(paramValInd,coupMatInd,termInd)=uDist(expUnitary,AHTUnitaries{termInd},N);
+            raw_DIT(paramValInd,coupMatInd,termInd)=uDist(deltaUnitary,AHTUnitaries{termInd},N);
+            raw_DFP(paramValInd,coupMatInd,termInd) = overlap(expUnitary, AHTUnitariesP{termInd}, N);
         end
         
         % Time-suspension fidelities
-        raw_fTS(paramValInd,coupMatInd) = overlap(expUnitary,speye(dim,dim),N);
-        raw_DfTS(paramValInd,coupMatInd) = overlap(deltaUnitary,speye(dim,dim),N); 
+        raw_OFS(paramValInd,coupMatInd) = overlap(expUnitary,speye(dim,dim),N);
+        raw_OIS(paramValInd,coupMatInd) = overlap(deltaUnitary,speye(dim,dim),N); 
     
-        raw_dTS(paramValInd,coupMatInd) = uDist(expUnitary,speye(dim,dim),N);
-        raw_DdTS(paramValInd,coupMatInd) = uDist(deltaUnitary,speye(dim,dim),N); 
+        raw_DFS(paramValInd,coupMatInd) = uDist(expUnitary,speye(dim,dim),N);
+        raw_DIS(paramValInd,coupMatInd) = uDist(deltaUnitary,speye(dim,dim),N); 
         
     end
     
     % Average Raw Results   
     for termAvgInd = 1:maxTerm+1
-        results_hsizes(paramValInd,termAvgInd)=mean(raw_hsizes(paramValInd,:,termAvgInd));
-        results_f(paramValInd,termAvgInd)=mean(raw_f(paramValInd,:,termAvgInd));
-        results_Df(paramValInd,termAvgInd)=mean(raw_Df(paramValInd,:,termAvgInd)); 
-        results_d(paramValInd,termAvgInd)=mean(raw_d(paramValInd,:,termAvgInd));
-        results_Dd(paramValInd,termAvgInd)=mean(raw_Dd(paramValInd,:,termAvgInd));
+        results_HHT(paramValInd,termAvgInd)=mean(raw_HHT(paramValInd,:,termAvgInd));
+        results_HHP(paramValInd,termAvgInd)=mean(raw_HHP(paramValInd,:,termAvgInd));
+        results_OFT(paramValInd,termAvgInd)=mean(raw_OFT(paramValInd,:,termAvgInd));
+        results_OIT(paramValInd,termAvgInd)=mean(raw_OIT(paramValInd,:,termAvgInd)); 
+        results_OFP(paramValInd,termAvgInd)=mean(raw_OFP(paramValInd,:,termAvgInd)); 
+        results_DFT(paramValInd,termAvgInd)=mean(raw_DFT(paramValInd,:,termAvgInd));
+        results_DIT(paramValInd,termAvgInd)=mean(raw_DIT(paramValInd,:,termAvgInd));
+        results_DFP(paramValInd,termAvgInd)=mean(raw_DFP(paramValInd,:,termAvgInd));
     end
 
-    results_fTS(paramValInd)=mean(raw_fTS(paramValInd,:));
-    results_DfTS(paramValInd)=mean(raw_DfTS(paramValInd,:));
-    results_dTS(paramValInd)=mean(raw_dTS(paramValInd,:));
-    results_DdTS(paramValInd)=mean(raw_DdTS(paramValInd,:));
+    results_OFS(paramValInd)=mean(raw_OFS(paramValInd,:));
+    results_OIS(paramValInd)=mean(raw_OIS(paramValInd,:));
+    results_DFS(paramValInd)=mean(raw_DFS(paramValInd,:));
+    results_DIS(paramValInd)=mean(raw_DIS(paramValInd,:));
     
     if exist('WTs','var') % for sweeping over the product coupling*tau; off by default
         WTs(WTind) = coupling * tau;       
-        WTF0s(WTind) = results_f(paramValInd,termAvgInd);
-        WTHsizes(WTind,:)=results_hsizes(paramValInd,:);
+        WTF0s(WTind) = results_OFT(paramValInd,termAvgInd);
+        WTHsizes(WTind,:)=results_HHT(paramValInd,:);
         WTtaus(WTind)=tau;
         WTcoups(WTind)=coupling;
         
