@@ -14,7 +14,6 @@ global dim Pulses knownOmegas knownQs knownPs  %#ok<NUSED>
 
 %% Control Parameters (change these)
 
-load('dij_1_Dipole_Hamiltonians(4).mat')
 % Valid sequences are: WHH, MREV8, CORY48, YXX48, YXX24, YXX24S, AZ48,
 %    AS10M, AS10E, WHHWHH, ML10, WPW9-2Cycle, MG8, SED24, SED28, SED96
 
