@@ -10,7 +10,6 @@
 % problem.
 
 %% Configuration
-global dim Pulses knownOmegas knownQs knownPs 
 
 % Derived parameters
 dim = 2^N;
@@ -139,7 +138,7 @@ for paramValInd=1:length(testVars)
         toggledHsys = cell(1,length(Pulses)+1);
         toggledHsysP = cell(1,length(Pulses)*pulseDivs+1);
         for p = 0:length(Pulses)
-            toggle = getURF(p,Pulses,X,Y,UDx,UDy,UDxbar,UDybar);
+            toggle = getURF(p,Pulses,dim,X,Y,UDx,UDy,UDxbar,UDybar);
             toggledHsys{p+1} = toggle'*Hsys*toggle; 
         end
 
@@ -150,7 +149,7 @@ for paramValInd=1:length(testVars)
                 PulsesP{semiPulseInd}=PulsesP{semiPulseInd}*Pulses{ceil(semiPulseInd/pulseDivs)};
             end
             for p = 0:length(Pulses)*pulseDivs
-                toggle = getURF(p,PulsesP,X,Y,UdivX,UdivY,UdivXbar,UdivYbar);
+                toggle = getURF(p,PulsesP,dim,X,Y,UdivX,UdivY,UdivXbar,UdivYbar);
                 toggledHsysP{p+1} = toggle'*Hsys*toggle;
             end
 
@@ -226,7 +225,7 @@ for paramValInd=1:length(testVars)
     end
     
     % progress tracker for my impatient self
-    %strcat(testVarName,'_',sequenceName,'_',string(paramValInd))
+    strcat(testVarName,'_',sequenceName,'_',string(paramValInd))
 end
 
 %% Save Result Output

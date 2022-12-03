@@ -9,8 +9,7 @@
 % Make sure that the Ux, etc passed are for instantaneous pulses
 
 
-function URF = getURF(frame,Pulses,X,Y,Ux,Uy,Uxbar,Uybar) 
-    global dim
+function URF = getURF(frame,Pulses,dim,X,Y,Ux,Uy,Uxbar,Uybar) 
     
     if frame < 1
         URF = speye(dim,dim); %returns the identity if frame == 0
