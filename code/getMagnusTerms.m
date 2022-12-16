@@ -17,25 +17,25 @@ MagnusTerms = {};
 if strcmp(mode,'time')
     done = false;
     tic
-    termCalcInd = 1;
+    magTermInd = 1;
     while ~done
-        MagnusTerms{termCalcInd} = (1i/tCyc)*Omega(termCalcInd,toggledHsys,Taus); %#ok<*SAGROW> 
-        raw_HHT(paramValInd,coupMatInd,termCalcInd) = log10(specnorm(MagnusTerms{termCalcInd}));
+        MagnusTerms{magTermInd} = (1i/tCyc)*Omega(magTermInd,toggledHsys,Taus); %#ok<*SAGROW> 
+        raw_MHHT(paramValInd,coupMatInd,magTermInd) = log10(specnorm(MagnusTerms{magTermInd}));
         elapsed = toc;
-        termCalcInd %#ok<NOPTS>
+        magTermInd %#ok<NOPTS>
         if elapsed > computationTime/min(pulseDivs,2)
             done = true;
-            maxTerm = termCalcInd - 1;
+            maxTerm = magTermInd - 1;
             mode = 'max'; % ensures the same number of terms are computed for each Hdip, test param
         else
-            termCalcInd = termCalcInd + 1;
+            magTermInd = magTermInd + 1;
         end
     end
     
 elseif strcmp(mode,'max')
-    for termCalcInd=1:maxTerm+1
-        MagnusTerms{termCalcInd} = (1i/tCyc)*Omega(termCalcInd,toggledHsys,Taus);
-        raw_HHT(paramValInd,coupMatInd,termCalcInd) = log10(specnorm(MagnusTerms{termCalcInd}));
+    for magTermInd=1:maxTerm+1
+        MagnusTerms{magTermInd} = (1i/tCyc)*Omega(magTermInd,toggledHsys,Taus);
+        raw_MHHT(paramValInd,coupMatInd,magTermInd) = log10(specnorm(MagnusTerms{magTermInd}));
     end   
 end
 
@@ -43,12 +43,12 @@ end
 knownOmegas = {};
 knownPs = {};
 knownQs = {};
-for termCalcInd=1:maxTerm+1
+for magTermInd=1:maxTerm+1
     if pulseDivs > 1
-        MagnusTermsP{termCalcInd} = (1i/tCyc)*Omega(termCalcInd,toggledHsysP,TausP);
-        raw_HHP(paramValInd,coupMatInd,termCalcInd) = log10(specnorm(MagnusTermsP{termCalcInd}));
+        MagnusTermsP{magTermInd} = (1i/tCyc)*Omega(magTermInd,toggledHsysP,TausP);
+        raw_MHHP(paramValInd,coupMatInd,magTermInd) = log10(specnorm(MagnusTermsP{magTermInd}));
     else
-        MagnusTermsP{termCalcInd} = nan;
-        raw_HHP(paramValInd,coupMatInd,termCalcInd) = nan;
+        MagnusTermsP{magTermInd} = nan;
+        raw_MHHP(paramValInd,coupMatInd,magTermInd) = nan;
     end
 end  

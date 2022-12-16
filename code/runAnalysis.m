@@ -17,78 +17,21 @@ f1 = 1/(4*pulse);
 w1 = 2*pi*f1;
 rotationError = 1+overRotation; %1 is a perfect pulse
 
+% Decrepit
+mode = 'max';
+computationTime = 1;
+
 %Configure Test Variable
 testValueMax = getVarMax(testVarName,varMaxMod);
 
 %% Initialize Quantum Setting
 
-initVars
-initCollectiveObs
-initHamiltonians
-
-%% Construct Result Storage Arrays
-% Array naming convention is results_ABC with a 3-letter code.
-% 
-% The first letter is the METRIC in question.  The metric options are:
-% O: overlap(Uexp, AHTUnitaries{termInd}) is the propagator overlap of the
-% experimental and AHT propagators.
-% D: uDist(Uexp, AHTUnitaries{termInd}) is the unitary distance (currently
-% using the spectral norm) between the experimental and AHT propagators.
-% H: specnorm(MagnusTerms{termInd}) is the norm of the average Hamiltonian
-% term.
-%
-% The second letter is the PULSE TREATMENT for constructing Uexp, the
-% EXPERIMENTAL propagator. The options are:
-% I: Instantaneous pulses (deltaUnitary)
-% F: Finite pulses (expUnitary)
-% H: used if the Metric is H, since in that case treatment of Uexp is
-% irrelevant.
-%
-% The third letter is the PULSE METHOD FOR AHT, indicating whether the
-% Average Hamiltonian computations used pulse divisions. The options are:
-% T: Traditional analysis assuming instantaneous pulses
-% P: Pulse length incorporated into the AHT computations.
-% S: Uexp compared only to the identity matrix; AHT terms not computed
-% (the true Time-Suspension fidelity) (Never occurs with HH).
-%
-% For example, results_OFT is the overlap between testUnitary (Uexp for
-% finite pulses) and AHTUnitaries{termInd} (U_AHT,n not accounting for
-% pulse widths in the AHT computations).
+initVars            % pauli matrices
+initCollectiveObs   % collective spin operators
+initHamiltonians    % Hamiltonians
+initResultStorage   % arrays for storing results
 
 testVars = zeros(testValueCount,1);
-
-% Size of Magnus Terms
-results_HHT = zeros(length(testVars),maxTerm+1);
-results_HHP = zeros(length(testVars),maxTerm+1);
-
-raw_HHT = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_HHP = zeros(length(testVars),couplingsCount,maxTerm+1);
-
-% Hn Overlaps (fn)
-results_OIT = zeros(length(testVars),maxTerm+1);
-results_OFT = zeros(length(testVars),maxTerm+1);
-results_OFP = zeros(length(testVars),maxTerm+1);
-results_OFS = zeros(length(testVars),1);
-results_OIS = zeros(length(testVars),1);
-
-raw_OIT = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_OFT = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_OFP = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_OFS = zeros(length(testVars),couplingsCount);
-raw_OIS = zeros(length(testVars),couplingsCount);
-
-% Hn Propagator Distances (dn)
-results_DIT = zeros(length(testVars),maxTerm+1);
-results_DFT = zeros(length(testVars),maxTerm+1);
-results_DFP = zeros(length(testVars),maxTerm+1);
-results_DFS = zeros(length(testVars),1);
-results_DIS = zeros(length(testVars),1);
-
-raw_DFS = zeros(length(testVars),couplingsCount);
-raw_DIS = zeros(length(testVars),couplingsCount);
-raw_DFT = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_DIT = zeros(length(testVars),couplingsCount,maxTerm+1);
-raw_DFP = zeros(length(testVars),couplingsCount,maxTerm+1);
 
 %% Iterate over different parameter values, compute AHT terms and fidelities
 
@@ -162,62 +105,83 @@ for paramValInd=1:length(testVars)
                 tauPInd = tauPInd + pulseDivs; 
             end
         end
-                
-        % Compute Magnus Series terms
-        getMagnusTerms;
-
-        % obtain theoretical unitaries from AHT and compute Fidelity
-        AHTUnitaries = {};
-        AHTUnitariesP = {};
-        sumAH = sparse(dim,dim);
-        sumAHP = sparse(dim,dim);
-        
-        for termInd=1:maxTerm+1
-            sumAH = sumAH + MagnusTerms{termInd};
-            sumAHP = sumAHP + MagnusTermsP{termInd};
-            AHTUnitaries{termInd} = expm(-1i*sumAH*2*pi*tCyc); %#ok<SAGROW>
-            AHTUnitariesP{termInd} = expm(-1i*sumAHP*2*pi*tCyc); %#ok<SAGROW>  
-
+         
+        if do_Magnus
             
-            raw_OFT(paramValInd,coupMatInd,termInd)=overlap(expUnitary, AHTUnitaries{termInd}, N);
-            raw_OIT(paramValInd,coupMatInd,termInd) = overlap(deltaUnitary, AHTUnitaries{termInd}, N);
-            raw_OFP(paramValInd,coupMatInd,termInd) = overlap(expUnitary, AHTUnitariesP{termInd}, N);
+            % Compute Magnus Series terms
+            getMagnusTerms
 
-            raw_DFT(paramValInd,coupMatInd,termInd)=uDist(expUnitary,AHTUnitaries{termInd},N);
-            raw_DIT(paramValInd,coupMatInd,termInd)=uDist(deltaUnitary,AHTUnitaries{termInd},N);
-            raw_DFP(paramValInd,coupMatInd,termInd) = overlap(expUnitary, AHTUnitariesP{termInd}, N);
+            % obtain theoretical unitaries from AHT and compute Fidelity
+            AHTUnitaries = {};
+            AHTUnitariesP = {};
+            sumAH = sparse(dim,dim);
+            sumAHP = sparse(dim,dim);
+
+            for termInd=1:maxTerm+1
+                sumAH = sumAH + MagnusTerms{termInd};
+                sumAHP = sumAHP + MagnusTermsP{termInd};
+                AHTUnitaries{termInd} = expm(-1i*sumAH*2*pi*tCyc); %#ok<*SAGROW> 
+                AHTUnitariesP{termInd} = expm(-1i*sumAHP*2*pi*tCyc);   
+
+
+                raw_MOFT(paramValInd,coupMatInd,termInd)=overlap(expUnitary, AHTUnitaries{termInd}, N);  
+                raw_MOIT(paramValInd,coupMatInd,termInd) = overlap(deltaUnitary, AHTUnitaries{termInd}, N);
+                raw_MOFP(paramValInd,coupMatInd,termInd) = overlap(expUnitary, AHTUnitariesP{termInd}, N);
+
+                raw_MDFT(paramValInd,coupMatInd,termInd)=uDist(expUnitary,AHTUnitaries{termInd},N);
+                raw_MDIT(paramValInd,coupMatInd,termInd)=uDist(deltaUnitary,AHTUnitaries{termInd},N);
+                raw_MDFP(paramValInd,coupMatInd,termInd) = overlap(expUnitary, AHTUnitariesP{termInd}, N);
+            end
+
+            % Time-suspension fidelities
+            raw_SOFS(paramValInd,coupMatInd) = overlap(expUnitary,speye(dim,dim),N);
+            raw_SOIS(paramValInd,coupMatInd) = overlap(deltaUnitary,speye(dim,dim),N); 
+
+            raw_SDFS(paramValInd,coupMatInd) = uDist(expUnitary,speye(dim,dim),N);
+            raw_SDIS(paramValInd,coupMatInd) = uDist(deltaUnitary,speye(dim,dim),N); 
         end
         
-        % Time-suspension fidelities
-        raw_OFS(paramValInd,coupMatInd) = overlap(expUnitary,speye(dim,dim),N);
-        raw_OIS(paramValInd,coupMatInd) = overlap(deltaUnitary,speye(dim,dim),N); 
-    
-        raw_DFS(paramValInd,coupMatInd) = uDist(expUnitary,speye(dim,dim),N);
-        raw_DIS(paramValInd,coupMatInd) = uDist(deltaUnitary,speye(dim,dim),N); 
+        if do_Floquet            
+            getFloquetTerms % computes Floquet propagators and computes fidelities.           
+        end
         
     end
     
     % Average Raw Results   
     for termAvgInd = 1:maxTerm+1
-        results_HHT(paramValInd,termAvgInd)=mean(raw_HHT(paramValInd,:,termAvgInd));
-        results_HHP(paramValInd,termAvgInd)=mean(raw_HHP(paramValInd,:,termAvgInd));
-        results_OFT(paramValInd,termAvgInd)=mean(raw_OFT(paramValInd,:,termAvgInd));
-        results_OIT(paramValInd,termAvgInd)=mean(raw_OIT(paramValInd,:,termAvgInd)); 
-        results_OFP(paramValInd,termAvgInd)=mean(raw_OFP(paramValInd,:,termAvgInd)); 
-        results_DFT(paramValInd,termAvgInd)=mean(raw_DFT(paramValInd,:,termAvgInd));
-        results_DIT(paramValInd,termAvgInd)=mean(raw_DIT(paramValInd,:,termAvgInd));
-        results_DFP(paramValInd,termAvgInd)=mean(raw_DFP(paramValInd,:,termAvgInd));
+        results_MHHT(paramValInd,termAvgInd)=mean(raw_MHHT(paramValInd,:,termAvgInd));
+        results_MHHP(paramValInd,termAvgInd)=mean(raw_MHHP(paramValInd,:,termAvgInd));
+        results_MOFT(paramValInd,termAvgInd)=mean(raw_MOFT(paramValInd,:,termAvgInd));
+        results_MOIT(paramValInd,termAvgInd)=mean(raw_MOIT(paramValInd,:,termAvgInd)); 
+        results_MOFP(paramValInd,termAvgInd)=mean(raw_MOFP(paramValInd,:,termAvgInd)); 
+        results_MDFT(paramValInd,termAvgInd)=mean(raw_MDFT(paramValInd,:,termAvgInd));
+        results_MDIT(paramValInd,termAvgInd)=mean(raw_MDIT(paramValInd,:,termAvgInd));
+        results_MDFP(paramValInd,termAvgInd)=mean(raw_MDFP(paramValInd,:,termAvgInd));
+    end
+    for termAvgInd = 1:maxFloqN+1
+        results_QOCT(paramValInd,termAvgInd)=mean(raw_QOCT(paramValInd,:,termAvgInd));
+        results_QDCT(paramValInd,termAvgInd)=mean(raw_QDCT(paramValInd,:,termAvgInd));
+        results_QOCP(paramValInd,termAvgInd)=mean(raw_QOCP(paramValInd,:,termAvgInd));
+        results_QDCP(paramValInd,termAvgInd)=mean(raw_QDCP(paramValInd,:,termAvgInd));
+        results_QOFT(paramValInd,termAvgInd)=mean(raw_QOFT(paramValInd,:,termAvgInd));
+        results_QOIT(paramValInd,termAvgInd)=mean(raw_QOIT(paramValInd,:,termAvgInd));
+        results_QOFP(paramValInd,termAvgInd)=mean(raw_QOFP(paramValInd,:,termAvgInd));
+        results_QOIP(paramValInd,termAvgInd)=mean(raw_QOIP(paramValInd,:,termAvgInd));
+        results_QDFT(paramValInd,termAvgInd)=mean(raw_QDFT(paramValInd,:,termAvgInd));
+        results_QDFP(paramValInd,termAvgInd)=mean(raw_QDFP(paramValInd,:,termAvgInd));
+        results_QDIT(paramValInd,termAvgInd)=mean(raw_QDIT(paramValInd,:,termAvgInd));
+        results_QDIP(paramValInd,termAvgInd)=mean(raw_QDIP(paramValInd,:,termAvgInd));
     end
 
-    results_OFS(paramValInd)=mean(raw_OFS(paramValInd,:));
-    results_OIS(paramValInd)=mean(raw_OIS(paramValInd,:));
-    results_DFS(paramValInd)=mean(raw_DFS(paramValInd,:));
-    results_DIS(paramValInd)=mean(raw_DIS(paramValInd,:));
+    results_SOFS(paramValInd)=mean(raw_SOFS(paramValInd,:));
+    results_SOIS(paramValInd)=mean(raw_SOIS(paramValInd,:));
+    results_SDFS(paramValInd)=mean(raw_SDFS(paramValInd,:));
+    results_SDIS(paramValInd)=mean(raw_SDIS(paramValInd,:));
     
     if exist('WTs','var') % for sweeping over the product coupling*tau; off by default
         WTs(WTind) = coupling * tau;       
-        WTF0s(WTind) = results_OFT(paramValInd,termAvgInd);
-        WTHsizes(WTind,:)=results_HHT(paramValInd,:);
+        WTF0s(WTind) = results_MOFT(paramValInd,termAvgInd);
+        WTHsizes(WTind,:)=results_MHHT(paramValInd,:);
         WTtaus(WTind)=tau;
         WTcoups(WTind)=coupling;
         
@@ -238,9 +202,19 @@ if saveRuns
     elseif strcmp(testVarName,'tau')||strcmp(testVarName,'Tau')||strcmp(testVarName,'tau_lo')
         fileDescriptor = strcat(date,'_',sequenceName,'_',testVarName,string(coupling),']',string(Delta),'_REC_',string(maxTerm));
     end  
+
     if ~exist('fileNameAdd','var')
         fileNameAdd='';
     end
-    fileDescriptor = strcat(fileDescriptor,fileNameAdd,'.mat');
-    save(fileDescriptor)
+    fileDescriptor = strcat(fileDescriptor,fileNameAdd);
+    
+        
+    if do_Magnus
+        fileDescriptor = strcat(fileDescriptor,"[MAG]");
+    end
+    if do_Floquet
+        fileDescriptor = strcat(fileDescriptor,"[FLQ]");
+    end
+    
+    save(strcat(fileDescriptor,".mat"))
 end
